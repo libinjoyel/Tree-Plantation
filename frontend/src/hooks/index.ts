@@ -1,5 +1,5 @@
 // Custom hooks
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
  * Custom hook for managing form state
@@ -49,7 +49,7 @@ export const useAsync = <T,>(asyncFunction: () => Promise<T>, immediate = true) 
   }, [asyncFunction]);
 
   // Call immediately if specified
-  useState(() => {
+  useEffect(() => {
     if (immediate) {
       execute();
     }

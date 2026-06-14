@@ -2019,6 +2019,8 @@ body.dark-mode .preference-item {
 body.dark-mode .preference-item label {
   color: #d0d0d0;
 }
+
+.summary-card {
   transition: all 0.3s;
   display: flex;
   align-items: center;

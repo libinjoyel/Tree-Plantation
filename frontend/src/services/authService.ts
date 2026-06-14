@@ -1,6 +1,6 @@
 // Services to handle authentication API calls
 
-import { ApiResponse, User, LoginCredentials } from '../types';
+import type { ApiResponse, User, LoginCredentials } from '../types';
 import apiConfig from '../utils/apiConfig';
 
 class AuthService {
@@ -9,6 +9,9 @@ class AuthService {
       const response = await apiConfig.post('/auth/login', credentials);
       if (response.success && response.data?.token) {
         localStorage.setItem('token', response.data.token);
+        if (response.data?.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
       }
       return response;
     } catch (error) {
@@ -21,11 +24,14 @@ class AuthService {
     password: string;
     name: string;
     confirmPassword: string;
-  }): Promise<ApiResponse<User>> {
+  }): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
       const response = await apiConfig.post('/auth/register', data);
       if (response.success && response.data?.token) {
         localStorage.setItem('token', response.data.token);
+        if (response.data?.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
       }
       return response;
     } catch (error) {
@@ -40,15 +46,25 @@ class AuthService {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
   }
 
-  async getCurrentUser(): Promise<ApiResponse<User>> {
+  async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
     try {
       return await apiConfig.get('/auth/me');
     } catch (error) {
       return { success: false, error: 'Failed to fetch user' };
     }
+  }
+
+  getStoredUser(): User | null {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
   }
 }
 

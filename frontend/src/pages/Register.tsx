@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { RegisterCredentials } from '../types';
+import authService from '../services/authService';
 import '../styles/Auth.css';
 
 export const Register = () => {
@@ -27,6 +28,11 @@ export const Register = () => {
       return false;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(credentials.email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
     if (credentials.password !== credentials.confirmPassword) {
       setError('Passwords do not match');
       return false;
@@ -50,15 +56,13 @@ export const Register = () => {
 
     setIsLoading(true);
 
-    // TODO: Replace with actual API call
     try {
-      console.log('Register attempt:', {
-        email: credentials.email,
-        name: credentials.name,
-      });
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      navigate('/login');
+      const response = await authService.register(credentials);
+      if (response.success) {
+        navigate('/dashboard');
+      } else {
+        setError(response.error || 'Registration failed. Please try again.');
+      }
     } catch (err) {
       setError('Registration failed. Please try again.');
       console.error(err);

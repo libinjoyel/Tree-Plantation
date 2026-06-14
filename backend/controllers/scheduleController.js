@@ -180,7 +180,7 @@ const scheduleController = {
     try {
       const days = parseInt(req.query.days) || 7;
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Calculate future date
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + days);

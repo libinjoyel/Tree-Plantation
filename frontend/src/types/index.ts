@@ -1,6 +1,7 @@
 // User types
 export interface User {
   id: string;
+  _id?: string;
   email: string;
   name: string;
   createdAt: Date;
@@ -18,13 +19,47 @@ export interface RegisterCredentials {
   confirmPassword: string;
 }
 
-// Plant types
+// Plant types — wateringSchedule is a number (days), matching backend model
 export interface Plant {
   id: string;
+  _id?: string;
+  userId?: string;
   name: string;
   species: string;
-  wateringSchedule: string;
+  wateringSchedule: number; // number of days between waterings
   lastWatered: Date;
+  health?: number;
+  createdAt?: Date;
+}
+
+// Schedule types
+export interface ScheduleItem {
+  id: string;
+  _id?: string;
+  userId?: string;
+  plantId: string;
+  plantName: string;
+  task: string;
+  dueDate: string; // YYYY-MM-DD
+  time: string;
+  completed: boolean;
+  priority: 'high' | 'medium' | 'low';
+}
+
+// Settings types
+export interface AppSettings {
+  notificationsEnabled: boolean;
+  emailAlerts: boolean;
+  wateringReminders: boolean;
+  weeklyReports: boolean;
+  darkMode: boolean;
+  language: string;
+  timezone: string;
+}
+
+export interface UserInfo {
+  username: string;
+  email: string;
 }
 
 // Weather types
@@ -56,6 +91,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  message?: string;
 }
 
 // OpenWeather API Response

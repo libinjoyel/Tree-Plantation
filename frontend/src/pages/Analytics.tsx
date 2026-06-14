@@ -1,45 +1,45 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import type { Plant, ScheduleItem } from '../types';
+import plantService from '../services/plantService';
+import scheduleService from '../services/scheduleService';
+import AppLayout from '../components/AppLayout';
 import '../styles/Dashboard.css';
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: string;
-  href: string;
-}
-
 export const Analytics = () => {
-  const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('charts');
+  const [plants, setPlants] = useState<Plant[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const menuItems: MenuItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard' },
-    { id: 'plants', label: 'My Plants', icon: '🌱', href: '/my-plants' },
-    { id: 'schedule', label: 'Schedule', icon: '📅', href: '/schedule' },
-    { id: 'tips', label: 'Care Tips', icon: '💡', href: '/care-tips' },
-    { id: 'charts', label: 'Analytics', icon: '📈', href: '/analytics' },
-    { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [plantsResponse, schedulesResponse] = await Promise.all([
+          plantService.getAllPlants(),
+          scheduleService.getAllSchedules()
+        ]);
 
-  const plantStats = [
-    { name: 'Monstera Deliciosa', health: 92, waterFreq: 7, lastWatered: 3 },
-    { name: 'Snake Plant', health: 85, waterFreq: 14, lastWatered: 5 },
-    { name: 'Pothos', health: 88, waterFreq: 5, lastWatered: 1 },
-    { name: 'Spider Plant', health: 90, waterFreq: 10, lastWatered: 2 },
-  ];
+        if (plantsResponse.success && plantsResponse.data) {
+          setPlants(plantsResponse.data.plants);
+        } else {
+          setError(plantsResponse.error || 'Failed to fetch plants');
+        }
 
-  const handleLogout = () => {
-    navigate('/login');
-  };
+        if (schedulesResponse.success && schedulesResponse.data) {
+          setSchedules(schedulesResponse.data.schedules);
+        } else {
+          setError(schedulesResponse.error || 'Failed to fetch schedules');
+        }
+      } catch (err: any) {
+        setError(err.message || 'An error occurred while loading analytics data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleMenuClick = (menuId: string, href: string) => {
-    setActiveMenu(menuId);
-    if (href && href !== '#') {
-      navigate(href);
-    }
-  };
+    fetchData();
+  }, []);
 
   const getHealthColor = (health: number) => {
     if (health >= 90) return '#2d8659';
@@ -47,49 +47,107 @@ export const Analytics = () => {
     return '#ff6b6b';
   };
 
+  // Helper to calculate days since last watered
+  const getDaysSinceWatered = (lastWateredDateString: string | Date) => {
+    const lastWateredDate = new Date(lastWateredDateString);
+    const diffTime = Math.abs(Date.now() - lastWateredDate.getTime());
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Dynamic Statistics Calculations
+  const totalPlants = plants.length;
+
+  const completedSchedules = schedules.filter(s => s.completed);
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const wateringsThisMonth = completedSchedules.filter(s => {
+    if (!s.dueDate) return false;
+    const date = new Date(s.dueDate);
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  }).length;
+
+  const avgHealth = totalPlants
+    ? Math.round(plants.reduce((sum, p) => sum + (p.health !== undefined ? p.health : 100), 0) / totalPlants)
+    : 100;
+
+  const totalCareTasks = schedules.length;
+
+  const avgWateringFreq = totalPlants
+    ? Math.round((plants.reduce((sum, p) => sum + p.wateringSchedule, 0) / totalPlants) * 10) / 10
+    : 0;
+
+  const plantsAtGoal = plants.filter(p => (p.health !== undefined ? p.health : 100) >= 85).length;
+
+  const careConsistencyRate = totalCareTasks
+    ? Math.round((completedSchedules.length / totalCareTasks) * 100)
+    : 100;
+
+  // Find top performer plant
+  const topPerformer = totalPlants
+    ? plants.reduce((top, p) => ((p.health !== undefined ? p.health : 100) > (top.health !== undefined ? top.health : 100) ? p : top), plants[0])
+    : null;
+
+  // Dynamic Recommendations
+  const recommendations: { icon: string; title: string; description: string }[] = [];
+
+  // 1. Identify unhealthy plants
+  const unhealthyPlants = plants.filter(p => (p.health !== undefined ? p.health : 100) < 85);
+  unhealthyPlants.forEach(plant => {
+    recommendations.push({
+      icon: '⚠️',
+      title: `Monitor ${plant.name}`,
+      description: `Health score at ${plant.health}%. Consider adjusting watering or fertilizing.`
+    });
+  });
+
+  // 2. Identify plants that need watering today
+  const needyPlants = plants.filter(plant => {
+    const daysSince = getDaysSinceWatered(plant.lastWatered);
+    return daysSince >= plant.wateringSchedule;
+  });
+  needyPlants.forEach(plant => {
+    recommendations.push({
+      icon: '💧',
+      title: `Water ${plant.name} Today`,
+      description: `Due for watering based on its ${plant.wateringSchedule}-day schedule.`
+    });
+  });
+
+  // 3. Fallback recommendations if none exists
+  if (recommendations.length === 0) {
+    if (totalPlants > 0) {
+      recommendations.push({
+        icon: '✨',
+        title: 'Great Job!',
+        description: `You've maintained ${avgHealth}% average plant health. Keep it up!`
+      });
+    } else {
+      recommendations.push({
+        icon: '🌱',
+        title: 'Add your first plant',
+        description: 'Go to the Dashboard or My Plants to register a new plant and start tracking analytics.'
+      });
+    }
+    recommendations.push({
+      icon: '🔄',
+      title: 'Seasonal Rotation',
+      description: 'Rotate your plants every few weeks to ensure even light exposure on all sides.'
+    });
+  }
+
   return (
-    <div className="dashboard-wrapper">
-      {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <div className="logo">🌱</div>
-          {sidebarOpen && <h2>PlantCare AI</h2>}
+    <AppLayout activeMenu="charts" pageTitle="📈 Analytics">
+      {loading ? (
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading analytics...</p>
         </div>
-
-        <nav className="sidebar-nav">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${activeMenu === item.id ? 'active' : ''}`}
-              onClick={() => handleMenuClick(item.id, item.href)}
-              title={item.label}
-            >
-              <span className="icon">{item.icon}</span>
-              {sidebarOpen && <span className="label">{item.label}</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="logout-sidebar-btn" onClick={handleLogout} title="Logout">
-            <span className="icon">🚪</span>
-            {sidebarOpen && <span className="label">Logout</span>}
-          </button>
+      ) : error ? (
+        <div className="error-state">
+          <p>❌ Error: {error}</p>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="dashboard-main">
-        <nav className="navbar">
-          <div className="navbar-content">
-            <button className="toggle-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              ☰
-            </button>
-            <h1>📈 Analytics</h1>
-          </div>
-        </nav>
-
-        <main className="content">
+      ) : (
+        <>
           {/* Overview Cards */}
           <div className="section">
             <h2>📊 Overview</h2>
@@ -98,28 +156,28 @@ export const Analytics = () => {
                 <div className="card-icon">🌱</div>
                 <div className="card-content">
                   <p className="card-label">Total Plants</p>
-                  <p className="card-value">4</p>
+                  <p className="card-value">{totalPlants}</p>
                 </div>
               </div>
               <div className="analytics-card">
                 <div className="card-icon">💧</div>
                 <div className="card-content">
                   <p className="card-label">Waterings This Month</p>
-                  <p className="card-value">16</p>
+                  <p className="card-value">{wateringsThisMonth}</p>
                 </div>
               </div>
               <div className="analytics-card">
                 <div className="card-icon">🎯</div>
                 <div className="card-content">
                   <p className="card-label">Average Health</p>
-                  <p className="card-value">88.75%</p>
+                  <p className="card-value">{avgHealth}%</p>
                 </div>
               </div>
               <div className="analytics-card">
                 <div className="card-icon">⭐</div>
                 <div className="card-content">
                   <p className="card-label">Care Tasks</p>
-                  <p className="card-value">27</p>
+                  <p className="card-value">{totalCareTasks}</p>
                 </div>
               </div>
             </div>
@@ -129,24 +187,38 @@ export const Analytics = () => {
           <div className="section">
             <h2>🏥 Plant Health Status</h2>
             <div className="health-stats">
-              {plantStats.map((plant, index) => (
-                <div key={index} className="health-item">
-                  <div className="health-name">{plant.name}</div>
-                  <div className="health-bar">
-                    <div
-                      className="health-fill"
-                      style={{
-                        width: `${plant.health}%`,
-                        backgroundColor: getHealthColor(plant.health),
-                      }}
-                    ></div>
-                  </div>
-                  <div className="health-info">
-                    <span className="health-percent">{plant.health}%</span>
-                    <span className="health-watered">Last watered: {plant.lastWatered}d ago</span>
-                  </div>
+              {plants.length === 0 ? (
+                <div className="empty-plants-msg">
+                  <p>No plants registered yet. Add a plant to view health status.</p>
                 </div>
-              ))}
+              ) : (
+                plants.map((plant) => {
+                  const healthVal = plant.health !== undefined ? plant.health : 100;
+                  const daysSince = getDaysSinceWatered(plant.lastWatered);
+                  return (
+                    <div key={plant.id} className="health-item">
+                      <div className="health-name">
+                        <strong>{plant.name}</strong> <span className="species-tag">({plant.species})</span>
+                      </div>
+                      <div className="health-bar">
+                        <div
+                          className="health-fill"
+                          style={{
+                            width: `${healthVal}%`,
+                            backgroundColor: getHealthColor(healthVal),
+                          }}
+                        ></div>
+                      </div>
+                      <div className="health-info">
+                        <span className="health-percent">{healthVal}% Health</span>
+                        <span className="health-watered">
+                          Last watered: {daysSince === 0 ? 'Today' : `${daysSince}d ago`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -156,23 +228,25 @@ export const Analytics = () => {
             <div className="stats-grid">
               <div className="stat-box">
                 <h4>💧 Watering Frequency</h4>
-                <p className="stat-text">Average every 9 days</p>
-                <p className="stat-subtext">4 plants tracked</p>
+                <p className="stat-text">Average every {avgWateringFreq} days</p>
+                <p className="stat-subtext">{totalPlants} plants tracked</p>
               </div>
               <div className="stat-box">
                 <h4>🎯 Health Goal</h4>
                 <p className="stat-text">Keep all plants 85%+ health</p>
-                <p className="stat-subtext">3/4 plants at goal</p>
+                <p className="stat-subtext">{plantsAtGoal}/{totalPlants} plants at goal</p>
               </div>
               <div className="stat-box">
                 <h4>📊 Care Consistency</h4>
-                <p className="stat-text">92% consistency rate</p>
-                <p className="stat-subtext">This month</p>
+                <p className="stat-text">{careConsistencyRate}% consistency rate</p>
+                <p className="stat-subtext">Based on all schedule tasks</p>
               </div>
               <div className="stat-box">
                 <h4>🏆 Top Performer</h4>
-                <p className="stat-text">Monstera Deliciosa</p>
-                <p className="stat-subtext">92% health score</p>
+                <p className="stat-text">{topPerformer ? topPerformer.name : 'N/A'}</p>
+                <p className="stat-subtext">
+                  {topPerformer ? `${topPerformer.health !== undefined ? topPerformer.health : 100}% health score` : 'Add plants to begin'}
+                </p>
               </div>
             </div>
           </div>
@@ -181,27 +255,15 @@ export const Analytics = () => {
           <div className="section">
             <h2>💡 Recommendations</h2>
             <div className="recommendations">
-              <div className="recommendation-item">
-                <span className="rec-icon">⚠️</span>
-                <div className="rec-content">
-                  <h4>Monitor Snake Plant</h4>
-                  <p>Health score at 85%. Consider adjusting watering or fertilizing.</p>
+              {recommendations.map((rec, index) => (
+                <div key={index} className="recommendation-item">
+                  <span className="rec-icon">{rec.icon}</span>
+                  <div className="rec-content">
+                    <h4>{rec.title}</h4>
+                    <p>{rec.description}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="recommendation-item">
-                <span className="rec-icon">💧</span>
-                <div className="rec-content">
-                  <h4>Water Pothos Today</h4>
-                  <p>Due for watering based on 5-day schedule.</p>
-                </div>
-              </div>
-              <div className="recommendation-item">
-                <span className="rec-icon">✨</span>
-                <div className="rec-content">
-                  <h4>Great Job!</h4>
-                  <p>You've maintained 88.75% average plant health. Keep it up!</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -239,9 +301,46 @@ export const Analytics = () => {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </>
+      )}
+
+      <style>{`
+        .loading-state, .error-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          text-align: center;
+        }
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid rgba(45, 134, 89, 0.1);
+          border-top-color: #2d8659;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 16px;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .empty-plants-msg {
+          padding: 24px;
+          text-align: center;
+          color: #666;
+          font-style: italic;
+        }
+        .species-tag {
+          font-weight: normal;
+          color: #666;
+          font-size: 14px;
+        }
+      `}</style>
+    </AppLayout>
   );
 };
 

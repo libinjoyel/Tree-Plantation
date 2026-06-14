@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LoginCredentials } from '../types';
+import authService from '../services/authService';
 import '../styles/Auth.css';
 
 export const Login = () => {
@@ -60,19 +61,17 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log('Login attempt:', credentials);
-      console.log('Remember me:', rememberMe);
-
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (rememberMe) {
-        localStorage.setItem('rememberEmail', credentials.email);
+      const response = await authService.login(credentials);
+      if (response.success) {
+        if (rememberMe) {
+          localStorage.setItem('rememberEmail', credentials.email);
+        } else {
+          localStorage.removeItem('rememberEmail');
+        }
+        navigate('/dashboard');
       } else {
-        localStorage.removeItem('rememberEmail');
+        setError(response.error || 'Login failed. Please try again.');
       }
-
-      navigate('/dashboard');
     } catch (err) {
       setError('Login failed. Please try again.');
       console.error(err);
@@ -149,9 +148,6 @@ export const Login = () => {
               />
               <span>Remember me</span>
             </label>
-            <Link to="/forgot-password" className="forgot-link">
-              Forgot password?
-            </Link>
           </div>
 
           <button

@@ -1,35 +1,70 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { AppSettings, UserInfo } from '../types';
+import settingsService from '../services/settingsService';
+import AppLayout from '../components/AppLayout';
 import '../styles/Dashboard.css';
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: string;
-  href: string;
-}
-
 export const Settings = () => {
-  const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('settings');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize dark mode from localStorage
-  const [settings, setSettings] = useState(() => {
-    const savedSettings = localStorage.getItem('appSettings');
-    const defaultSettings = {
-      notificationsEnabled: true,
-      emailAlerts: true,
-      wateringReminders: true,
-      weeklyReports: false,
-      darkMode: localStorage.getItem('darkMode') === 'true' ? true : false,
-      language: 'English',
-      timezone: 'UTC-5',
-    };
-    return savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
+  // User info state
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    username: '',
+    email: '',
   });
 
-  // Apply dark mode to document
+  // Settings state
+  const [settings, setSettings] = useState<AppSettings>({
+    notificationsEnabled: true,
+    emailAlerts: true,
+    wateringReminders: true,
+    weeklyReports: false,
+    darkMode: false,
+    language: 'English',
+    timezone: 'UTC',
+  });
+
+  // Password change state
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  // Load user info and settings on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [infoRes, settingsRes] = await Promise.all([
+          settingsService.getUserInfo(),
+          settingsService.getSettings()
+        ]);
+
+        if (infoRes.success && infoRes.data) {
+          setUserInfo(infoRes.data.userInfo);
+        } else {
+          setError(infoRes.error || 'Failed to load user info');
+        }
+
+        if (settingsRes.success && settingsRes.data) {
+          setSettings(settingsRes.data.settings);
+        } else {
+          setError(settingsRes.error || 'Failed to load settings');
+        }
+      } catch (err: any) {
+        setError(err.message || 'An error occurred while loading settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Apply dark mode theme
   useEffect(() => {
     if (settings.darkMode) {
       document.documentElement.style.colorScheme = 'dark';
@@ -42,50 +77,53 @@ export const Settings = () => {
     }
   }, [settings.darkMode]);
 
-  const [userInfo, setUserInfo] = useState({
-    username: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-  });
-
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-
-  const menuItems: MenuItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard' },
-    { id: 'plants', label: 'My Plants', icon: '🌱', href: '/my-plants' },
-    { id: 'schedule', label: 'Schedule', icon: '📅', href: '/schedule' },
-    { id: 'tips', label: 'Care Tips', icon: '💡', href: '/care-tips' },
-    { id: 'charts', label: 'Analytics', icon: '📈', href: '/analytics' },
-    { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
-  ];
-
-  const handleLogout = () => {
-    navigate('/login');
+  const handleSettingChange = (key: keyof AppSettings, value: boolean | string) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
-  const handleMenuClick = (menuId: string, href: string) => {
-    setActiveMenu(menuId);
-    if (href && href !== '#') {
-      navigate(href);
+  const handleUserInfoChange = (key: keyof UserInfo, value: string) => {
+    setUserInfo((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  // Save account settings (username only, email is read-only)
+  const handleSaveAccountSettings = async () => {
+    if (!userInfo.username.trim()) {
+      alert('❌ Username cannot be empty!');
+      return;
+    }
+
+    try {
+      const res = await settingsService.updateUserInfo({ name: userInfo.username });
+      if (res.success && res.data) {
+        setUserInfo(res.data.userInfo);
+        alert('✅ Account settings updated successfully!');
+      } else {
+        alert(`❌ Failed to update account settings: ${res.error}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message || 'Failed to save account settings'}`);
     }
   };
 
-  const handleSettingChange = (key: string, value: boolean | string) => {
-    setSettings({ ...settings, [key]: value });
-  };
-
-  const handleUserInfoChange = (key: string, value: string) => {
-    setUserInfo({ ...userInfo, [key]: value });
-  };
-
-  const handleSaveSettings = () => {
-    localStorage.setItem('appSettings', JSON.stringify(settings));
-    alert('✅ Settings saved successfully!');
+  // Save preferences & notification settings
+  const handleSavePreferences = async () => {
+    try {
+      const res = await settingsService.updateSettings(settings);
+      if (res.success && res.data) {
+        setSettings(res.data.settings);
+        alert('✅ Preferences saved successfully!');
+      } else {
+        alert(`❌ Failed to save preferences: ${res.error}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message || 'Failed to save preferences'}`);
+    }
   };
 
   const handleChangePasswordClick = () => {
@@ -93,7 +131,7 @@ export const Settings = () => {
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       alert('❌ Please fill in all password fields!');
       return;
@@ -106,54 +144,38 @@ export const Settings = () => {
       alert('❌ Password must be at least 6 characters long!');
       return;
     }
-    alert('✅ Password changed successfully!');
-    setShowChangePassword(false);
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+    try {
+      const res = await settingsService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+
+      if (res.success) {
+        alert('✅ Password changed successfully!');
+        setShowChangePassword(false);
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        alert(`❌ Failed to change password: ${res.error}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message || 'Failed to change password'}`);
+    }
   };
 
   return (
-    <div className="dashboard-wrapper">
-      {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <div className="logo">🌱</div>
-          {sidebarOpen && <h2>PlantCare AI</h2>}
+    <AppLayout activeMenu="settings" pageTitle="⚙️ Settings">
+      {loading ? (
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading settings...</p>
         </div>
-
-        <nav className="sidebar-nav">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${activeMenu === item.id ? 'active' : ''}`}
-              onClick={() => handleMenuClick(item.id, item.href)}
-              title={item.label}
-            >
-              <span className="icon">{item.icon}</span>
-              {sidebarOpen && <span className="label">{item.label}</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="logout-sidebar-btn" onClick={handleLogout} title="Logout">
-            <span className="icon">🚪</span>
-            {sidebarOpen && <span className="label">Logout</span>}
-          </button>
+      ) : error ? (
+        <div className="error-state">
+          <p>❌ Error: {error}</p>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="dashboard-main">
-        <nav className="navbar">
-          <div className="navbar-content">
-            <button className="toggle-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              ☰
-            </button>
-            <h1>⚙️ Settings</h1>
-          </div>
-        </nav>
-
-        <main className="content">
+      ) : (
+        <>
           {/* User Account Section */}
           <div className="settings-section">
             <h2>👤 Account Settings</h2>
@@ -170,28 +192,18 @@ export const Settings = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email Address</label>
+                <label htmlFor="email">Email Address (Read-only)</label>
                 <input
                   id="email"
                   type="email"
                   value={userInfo.email}
-                  onChange={(e) => handleUserInfoChange('email', e.target.value)}
-                  className="form-input"
+                  className="form-input read-only-input"
+                  disabled
+                  title="Email address cannot be changed."
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="phone">Phone Number</label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={userInfo.phone}
-                  onChange={(e) => handleUserInfoChange('phone', e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <button className="btn primary" onClick={handleSaveSettings}>
+              <button className="btn primary" onClick={handleSaveAccountSettings}>
                 💾 Save Account Settings
               </button>
             </div>
@@ -262,10 +274,11 @@ export const Settings = () => {
             <div className="settings-card">
               <div className="settings-toggle">
                 <div>
-                  <label>Enable All Notifications</label>
+                  <label htmlFor="notifications-enabled">Enable All Notifications</label>
                   <p className="toggle-description">Receive all types of notifications</p>
                 </div>
                 <input
+                  id="notifications-enabled"
                   type="checkbox"
                   checked={settings.notificationsEnabled}
                   onChange={(e) => handleSettingChange('notificationsEnabled', e.target.checked)}
@@ -275,10 +288,11 @@ export const Settings = () => {
 
               <div className="settings-toggle">
                 <div>
-                  <label>Email Alerts</label>
+                  <label htmlFor="email-alerts">Email Alerts</label>
                   <p className="toggle-description">Get important updates via email</p>
                 </div>
                 <input
+                  id="email-alerts"
                   type="checkbox"
                   checked={settings.emailAlerts}
                   onChange={(e) => handleSettingChange('emailAlerts', e.target.checked)}
@@ -289,10 +303,11 @@ export const Settings = () => {
 
               <div className="settings-toggle">
                 <div>
-                  <label>Watering Reminders</label>
+                  <label htmlFor="watering-reminders">Watering Reminders</label>
                   <p className="toggle-description">Be reminded when plants need water</p>
                 </div>
                 <input
+                  id="watering-reminders"
                   type="checkbox"
                   checked={settings.wateringReminders}
                   onChange={(e) => handleSettingChange('wateringReminders', e.target.checked)}
@@ -303,10 +318,11 @@ export const Settings = () => {
 
               <div className="settings-toggle">
                 <div>
-                  <label>Weekly Reports</label>
+                  <label htmlFor="weekly-reports">Weekly Reports</label>
                   <p className="toggle-description">Receive weekly plant health reports</p>
                 </div>
                 <input
+                  id="weekly-reports"
                   type="checkbox"
                   checked={settings.weeklyReports}
                   onChange={(e) => handleSettingChange('weeklyReports', e.target.checked)}
@@ -358,10 +374,11 @@ export const Settings = () => {
 
               <div className="settings-toggle">
                 <div>
-                  <label>Dark Mode</label>
+                  <label htmlFor="dark-mode">Dark Mode</label>
                   <p className="toggle-description">Enable dark theme for comfortable viewing</p>
                 </div>
                 <input
+                  id="dark-mode"
                   type="checkbox"
                   checked={settings.darkMode}
                   onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
@@ -369,7 +386,7 @@ export const Settings = () => {
                 />
               </div>
 
-              <button className="btn primary" onClick={handleSaveSettings}>
+              <button className="btn primary" onClick={handleSavePreferences}>
                 💾 Save Preferences
               </button>
             </div>
@@ -391,8 +408,8 @@ export const Settings = () => {
               </button>
             </div>
           </div>
-        </main>
-      </div>
+        </>
+      )}
 
       <style>{`
         .settings-section {
@@ -445,6 +462,12 @@ export const Settings = () => {
           margin-bottom: 16px;
         }
 
+        .read-only-input {
+          background-color: #f5f5f5;
+          color: #777;
+          cursor: not-allowed;
+        }
+
         .btn.danger {
           background: #ff6b6b;
           color: white;
@@ -463,8 +486,34 @@ export const Settings = () => {
         .btn.secondary:hover {
           background: #e8e8e8;
         }
+
+        .loading-state, .error-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          text-align: center;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid rgba(45, 134, 89, 0.1);
+          border-top-color: #2d8659;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
-    </div>
+    </AppLayout>
   );
 };
 

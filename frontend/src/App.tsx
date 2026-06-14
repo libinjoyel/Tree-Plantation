@@ -8,6 +8,7 @@ import CareTips from './pages/CareTips';
 import Settings from './pages/Settings';
 import Schedule from './pages/Schedule';
 import Analytics from './pages/Analytics';
+import PrivateRoute from './components/PrivateRoute';
 import './styles/App.css';
 
 function App() {
@@ -25,19 +26,19 @@ function App() {
       <Routes>
         {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
-        
-        {/* Auth Routes */}
+
+        {/* Auth Routes (public) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+
         {/* Protected Routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/my-plants" element={<MyPlants />} />
-        <Route path="/care-tips" element={<CareTips />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/schedule" element={<Schedule />} />
-        <Route path="/analytics" element={<Analytics />} />
-        
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/my-plants" element={<PrivateRoute><MyPlants /></PrivateRoute>} />
+        <Route path="/care-tips" element={<PrivateRoute><CareTips /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+        <Route path="/schedule" element={<PrivateRoute><Schedule /></PrivateRoute>} />
+        <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

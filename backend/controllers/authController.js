@@ -11,7 +11,7 @@ const generateToken = (userId) => {
 const authController = {
   register: async (req, res) => {
     try {
-      const { email, password, name } = req.body;
+      const { name, email, password} = req.body;
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -23,7 +23,7 @@ const authController = {
       }
 
       // Create new user
-      const user = new User({ email, password, name });
+      const user = new User({ name, email, password});
       await user.save();
 
       // Create default settings for user

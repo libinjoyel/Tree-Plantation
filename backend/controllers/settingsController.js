@@ -213,8 +213,7 @@ const settingsController = {
 
       const userInfo = {
         username: user.name,
-        email: user.email,
-        phone: user.phone || ''
+        email: user.email
       };
 
       res.json({
@@ -232,13 +231,12 @@ const settingsController = {
 
   updateUserInfo: async (req, res) => {
     try {
-      const { name, phone } = req.body;
+      const { name } = req.body;
 
       const user = await User.findByIdAndUpdate(
         req.userId,
         {
           ...(name && { name }),
-          ...(phone && { phone }),
           updatedAt: new Date()
         },
         { new: true }
@@ -253,8 +251,7 @@ const settingsController = {
 
       const userInfo = {
         username: user.name,
-        email: user.email,
-        phone: user.phone || ''
+        email: user.email
       };
 
       logger.info(`User info updated for user: ${req.userId}`);

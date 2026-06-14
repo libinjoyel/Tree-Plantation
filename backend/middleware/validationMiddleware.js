@@ -22,12 +22,12 @@ const validationMiddleware = {
   },
 
   validateRegister: (req, res, next) => {
-    const { email, password, confirmPassword, name } = req.body;
+    const { email, password, name } = req.body;
 
-    if (!email || !password || !confirmPassword || !name) {
+    if (!email || !password || !name) {
       return res.status(400).json({
         success: false,
-        error: 'All fields are required'
+        error: 'Email, password, and name are required'
       });
     }
 
@@ -42,13 +42,6 @@ const validationMiddleware = {
       return res.status(400).json({
         success: false,
         error: 'Password must be at least 6 characters'
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        error: 'Passwords do not match'
       });
     }
 
