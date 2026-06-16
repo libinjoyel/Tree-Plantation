@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Plant, ScheduleItem } from '../types';
 import plantService from '../services/plantService';
 import scheduleService from '../services/scheduleService';
+import { calculateHealth, formatTimeSince } from '../utils/helpers';
 import AppLayout from '../components/AppLayout';
 import '../styles/Dashboard.css';
 
@@ -47,13 +48,6 @@ export const Analytics = () => {
     return '#ff6b6b';
   };
 
-  // Helper to calculate days since last watered
-  const getDaysSinceWatered = (lastWateredDateString: string | Date) => {
-    const lastWateredDate = new Date(lastWateredDateString);
-    const diffTime = Math.abs(Date.now() - lastWateredDate.getTime());
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  };
-
   // Dynamic Statistics Calculations
   const totalPlants = plants.length;
 
@@ -66,8 +60,10 @@ export const Analytics = () => {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
+  const getPlantHealth = (p: Plant) => calculateHealth(p.lastWatered, p.wateringSchedule);
+
   const avgHealth = totalPlants
-    ? Math.round(plants.reduce((sum, p) => sum + (p.health !== undefined ? p.health : 100), 0) / totalPlants)
+    ? Math.round(plants.reduce((sum, p) => sum + getPlantHealth(p), 0) / totalPlants)
     : 100;
 
   const totalCareTasks = schedules.length;
@@ -76,7 +72,7 @@ export const Analytics = () => {
     ? Math.round((plants.reduce((sum, p) => sum + p.wateringSchedule, 0) / totalPlants) * 10) / 10
     : 0;
 
-  const plantsAtGoal = plants.filter(p => (p.health !== undefined ? p.health : 100) >= 85).length;
+  const plantsAtGoal = plants.filter(p => getPlantHealth(p) >= 85).length;
 
   const careConsistencyRate = totalCareTasks
     ? Math.round((completedSchedules.length / totalCareTasks) * 100)
@@ -84,27 +80,24 @@ export const Analytics = () => {
 
   // Find top performer plant
   const topPerformer = totalPlants
-    ? plants.reduce((top, p) => ((p.health !== undefined ? p.health : 100) > (top.health !== undefined ? top.health : 100) ? p : top), plants[0])
+    ? plants.reduce((top, p) => (getPlantHealth(p) > getPlantHealth(top) ? p : top), plants[0])
     : null;
 
   // Dynamic Recommendations
   const recommendations: { icon: string; title: string; description: string }[] = [];
 
   // 1. Identify unhealthy plants
-  const unhealthyPlants = plants.filter(p => (p.health !== undefined ? p.health : 100) < 85);
+  const unhealthyPlants = plants.filter(p => getPlantHealth(p) < 85);
   unhealthyPlants.forEach(plant => {
     recommendations.push({
       icon: '⚠️',
       title: `Monitor ${plant.name}`,
-      description: `Health score at ${plant.health}%. Consider adjusting watering or fertilizing.`
+      description: `Health score at ${getPlantHealth(plant)}%. Consider adjusting watering or fertilizing.`
     });
   });
 
   // 2. Identify plants that need watering today
-  const needyPlants = plants.filter(plant => {
-    const daysSince = getDaysSinceWatered(plant.lastWatered);
-    return daysSince >= plant.wateringSchedule;
-  });
+  const needyPlants = plants.filter(plant => getPlantHealth(plant) <= 0);
   needyPlants.forEach(plant => {
     recommendations.push({
       icon: '💧',
@@ -193,8 +186,7 @@ export const Analytics = () => {
                 </div>
               ) : (
                 plants.map((plant) => {
-                  const healthVal = plant.health !== undefined ? plant.health : 100;
-                  const daysSince = getDaysSinceWatered(plant.lastWatered);
+                  const healthVal = getPlantHealth(plant);
                   return (
                     <div key={plant.id} className="health-item">
                       <div className="health-name">
@@ -212,7 +204,7 @@ export const Analytics = () => {
                       <div className="health-info">
                         <span className="health-percent">{healthVal}% Health</span>
                         <span className="health-watered">
-                          Last watered: {daysSince === 0 ? 'Today' : `${daysSince}d ago`}
+                          {formatTimeSince(plant.lastWatered)}
                         </span>
                       </div>
                     </div>
@@ -245,7 +237,7 @@ export const Analytics = () => {
                 <h4>🏆 Top Performer</h4>
                 <p className="stat-text">{topPerformer ? topPerformer.name : 'N/A'}</p>
                 <p className="stat-subtext">
-                  {topPerformer ? `${topPerformer.health !== undefined ? topPerformer.health : 100}% health score` : 'Add plants to begin'}
+                  {topPerformer ? `${getPlantHealth(topPerformer)}% health score` : 'Add plants to begin'}
                 </p>
               </div>
             </div>

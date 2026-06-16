@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { Plant, WeatherData, WeatherSuggestion } from '../types';
 import { getWeatherForCurrentLocation, getPlantCareSuggestion } from '../services/weatherService';
 import plantService from '../services/plantService';
+import { calculateHealth } from '../utils/helpers';
+import { useRealtimeTimer } from '../hooks';
 import AppLayout from '../components/AppLayout';
 import '../styles/Dashboard.css';
 
@@ -40,7 +42,7 @@ export const Dashboard = () => {
     if (response.success && response.data?.plants) {
       setPlants(response.data.plants);
       // Build notifications for overdue plants
-      const overdue = response.data.plants.filter(p => getDaysSince(p.lastWatered) >= p.wateringSchedule);
+      const overdue = response.data.plants.filter(p => calculateHealth(p.lastWatered, p.wateringSchedule) <= 0);
       setNotifications(overdue.map(p => `${p.name} needs water!`));
     }
     setPlantsLoading(false);
@@ -59,11 +61,8 @@ export const Dashboard = () => {
     description: 'Partly cloudy',
   };
 
-  const getDaysSince = (date: Date): number =>
-    Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-
   // Computed stats
-  const needWaterCount = plants.filter(p => getDaysSince(p.lastWatered) >= p.wateringSchedule).length;
+  const needWaterCount = plants.filter(p => calculateHealth(p.lastWatered, p.wateringSchedule) <= 0).length;
   const healthyCount = plants.length - needWaterCount;
 
   const handleAddPlantClick = () => {
@@ -312,57 +311,15 @@ export const Dashboard = () => {
           <p className="loading-text">Loading plants...</p>
         ) : plants.length > 0 ? (
           <div className="plants-grid">
-            {plants.map((plant) => {
-              const daysSince = getDaysSince(plant.lastWatered);
-              const needsWater = daysSince >= plant.wateringSchedule;
-
-              return (
-                <div key={plant.id} className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
-                  <div className="plant-header">
-                    <span className="plant-emoji">🪴</span>
-                    <span className={`health-badge ${needsWater ? 'warning' : 'good'}`}>
-                      {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
-                    </span>
-                  </div>
-
-                  <h3 className="plant-name">{plant.name}</h3>
-                  <p className="plant-species">{plant.species}</p>
-
-                  <div className="plant-details">
-                    <div className="detail-item">
-                      <span className="detail-icon">💧</span>
-                      <div className="detail-content">
-                        <p className="detail-label">Watering</p>
-                        <p className="detail-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
-                      </div>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">📅</span>
-                      <div className="detail-content">
-                        <p className="detail-label">Last Watered</p>
-                        <p className="detail-value">{daysSince === 0 ? 'Today' : `${daysSince} day${daysSince !== 1 ? 's' : ''} ago`}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="plant-actions">
-                    <button
-                      className="action-btn primary"
-                      onClick={() => handleWaterPlant(plant.id, plant.name)}
-                      disabled={wateredPlants.has(plant.id)}
-                    >
-                      {wateredPlants.has(plant.id) ? '✅ Watered!' : '💧 Water Now'}
-                    </button>
-                    <button
-                      className="action-btn secondary"
-                      onClick={() => handleEditPlant(plant.id)}
-                    >
-                      📝 Edit
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {plants.map((plant) => (
+              <DashboardPlantCard
+                key={plant.id}
+                plant={plant}
+                onWater={handleWaterPlant}
+                onEdit={handleEditPlant}
+                isWatered={wateredPlants.has(plant.id)}
+              />
+            ))}
           </div>
         ) : (
           <p className="no-plants">No plants yet. Add your first plant to get started!</p>
@@ -508,6 +465,89 @@ export const Dashboard = () => {
         </div>
       )}
     </AppLayout>
+  );
+};
+
+// Subcomponent to use the real-time timer hook per plant card
+const DashboardPlantCard = ({
+  plant,
+  onWater,
+  onEdit,
+  isWatered,
+}: {
+  plant: Plant;
+  onWater: (id: string, name: string) => void;
+  onEdit: (id: string) => void;
+  isWatered: boolean;
+}) => {
+  const timer = useRealtimeTimer(plant.lastWatered);
+  const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
+  const needsWater = health <= 0;
+
+  return (
+    <div className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
+      <div className="plant-header">
+        <span className="plant-emoji">🪴</span>
+        <span className={`health-badge ${needsWater ? 'warning' : 'good'}`}>
+          {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
+        </span>
+      </div>
+
+      <h3 className="plant-name">{plant.name}</h3>
+      <p className="plant-species">{plant.species}</p>
+
+      <div className="plant-details">
+        <div className="detail-item">
+          <span className="detail-icon">💧</span>
+          <div className="detail-content">
+            <p className="detail-label">Watering</p>
+            <p className="detail-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <div className="detail-item">
+          <span className="detail-icon">📅</span>
+          <div className="detail-content">
+            <p className="detail-label">Last Watered</p>
+            <p className="detail-value">{timer}</p>
+          </div>
+        </div>
+        <div className="detail-item">
+          <span className="detail-icon">❤️</span>
+          <div className="detail-content">
+            <p className="detail-label">Health</p>
+            <p className="detail-value">
+              <span style={{
+                display: 'inline-block',
+                width: `${Math.max(health, 5)}%`,
+                minWidth: 4,
+                height: 8,
+                backgroundColor: health >= 75 ? '#2d8659' : health >= 50 ? '#ffa500' : '#ff6b6b',
+                borderRadius: 4,
+                marginRight: 6,
+                verticalAlign: 'middle',
+              }}></span>
+              {health}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="plant-actions">
+        <button
+          className="action-btn primary"
+          onClick={() => onWater(plant.id, plant.name)}
+          disabled={isWatered}
+        >
+          {isWatered ? '✅ Watered!' : '💧 Water Now'}
+        </button>
+        <button
+          className="action-btn secondary"
+          onClick={() => onEdit(plant.id)}
+        >
+          📝 Edit
+        </button>
+      </div>
+    </div>
   );
 };
 

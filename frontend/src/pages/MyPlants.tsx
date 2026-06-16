@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Plant } from '../types';
 import plantService from '../services/plantService';
+import { calculateHealth } from '../utils/helpers';
+import { useRealtimeTimer } from '../hooks';
 import AppLayout from '../components/AppLayout';
 import '../styles/Dashboard.css';
 
@@ -137,67 +139,16 @@ export const MyPlants = () => {
           <p className="no-plants">No plants yet. Add your first plant to get started!</p>
         ) : (
           <div className="plants-grid">
-            {plants.map(plant => {
-              const daysSince = getDaysSince(plant.lastWatered);
-              const needsWater = daysSince >= plant.wateringSchedule;
-
-              return (
-                <div key={plant.id} className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
-                  <div className="plant-header">
-                    <span className="plant-icon">🪴</span>
-                    <span className={`plant-status ${needsWater ? 'warning' : ''}`}>
-                      {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
-                    </span>
-                  </div>
-                  <h3>{plant.name}</h3>
-                  <p className="plant-species">{plant.species}</p>
-
-                  <div className="plant-info">
-                    <div className="info-item">
-                      <span className="info-icon">💧</span>
-                      <div>
-                        <p>Watering</p>
-                        <p className="info-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
-                      </div>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-icon">📅</span>
-                      <div>
-                        <p>Last Watered</p>
-                        <p className="info-value">
-                          {daysSince === 0 ? 'Today' : `${daysSince} day${daysSince !== 1 ? 's' : ''} ago`}
-                        </p>
-                      </div>
-                    </div>
-                    {plant.health !== undefined && (
-                      <div className="info-item">
-                        <span className="info-icon">❤️</span>
-                        <div>
-                          <p>Health</p>
-                          <p className="info-value">{plant.health}%</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="plant-actions">
-                    <button
-                      className="action-btn primary"
-                      onClick={() => handleWaterPlant(plant.id)}
-                      disabled={wateredPlants.has(plant.id)}
-                    >
-                      {wateredPlants.has(plant.id) ? '✅ Watered!' : '💧 Water Now'}
-                    </button>
-                    <button className="action-btn secondary" onClick={() => handleEditPlant(plant.id)}>
-                      📝 Edit
-                    </button>
-                    <button className="action-btn danger" onClick={() => handleDeletePlant(plant.id)}>
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {plants.map(plant => (
+              <PlantCard
+                key={plant.id}
+                plant={plant}
+                onWater={handleWaterPlant}
+                onEdit={handleEditPlant}
+                onDelete={handleDeletePlant}
+                isWatered={wateredPlants.has(plant.id)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -276,6 +227,78 @@ export const MyPlants = () => {
         </div>
       )}
     </AppLayout>
+  );
+};
+
+// Subcomponent to use the real-time timer hook per plant card
+const PlantCard = ({
+  plant,
+  onWater,
+  onEdit,
+  onDelete,
+  isWatered,
+}: {
+  plant: Plant;
+  onWater: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  isWatered: boolean;
+}) => {
+  const timer = useRealtimeTimer(plant.lastWatered);
+  const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
+  const needsWater = health <= 0;
+
+  return (
+    <div className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
+      <div className="plant-header">
+        <span className="plant-icon">🪴</span>
+        <span className={`plant-status ${needsWater ? 'warning' : ''}`}>
+          {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
+        </span>
+      </div>
+      <h3>{plant.name}</h3>
+      <p className="plant-species">{plant.species}</p>
+
+      <div className="plant-info">
+        <div className="info-item">
+          <span className="info-icon">💧</span>
+          <div>
+            <p>Watering</p>
+            <p className="info-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <div className="info-item">
+          <span className="info-icon">📅</span>
+          <div>
+            <p>Last Watered</p>
+            <p className="info-value">{timer}</p>
+          </div>
+        </div>
+        <div className="info-item">
+          <span className="info-icon">❤️</span>
+          <div>
+            <p>Health</p>
+            <p className="info-value">{health}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="plant-actions">
+        <button
+          className="action-btn primary"
+          onClick={() => onWater(plant.id)}
+          disabled={isWatered}
+        >
+          {isWatered ? '✅ Watered!' : '💧 Water Now'}
+        </button>
+        <button className="action-btn secondary" onClick={() => onEdit(plant.id)}>
+          📝 Edit
+        </button>
+        <button className="action-btn danger" onClick={() => onDelete(plant.id)}>
+          🗑️
+        </button>
+      </div>
+    </div>
   );
 };
 
