@@ -27,12 +27,6 @@ class AuthService {
   }): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
       const response = await apiConfig.post('/auth/register', data);
-      if (response.success && response.data?.token) {
-        localStorage.setItem('token', response.data.token);
-        if (response.data?.user) {
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-      }
       return response;
     } catch (error) {
       return { success: false, error: 'Registration failed' };
@@ -65,6 +59,22 @@ class AuthService {
 
   isAuthenticated(): boolean {
     return !!localStorage.getItem('token');
+  }
+
+  async forgotPassword(email: string): Promise<ApiResponse<{ resetToken?: string }>> {
+    try {
+      return await apiConfig.post('/auth/forgot-password', { email });
+    } catch {
+      return { success: false, error: 'Failed to process request' };
+    }
+  }
+
+  async resetPassword(token: string, password: string): Promise<ApiResponse<null>> {
+    try {
+      return await apiConfig.post('/auth/reset-password', { token, password });
+    } catch {
+      return { success: false, error: 'Failed to reset password' };
+    }
   }
 }
 

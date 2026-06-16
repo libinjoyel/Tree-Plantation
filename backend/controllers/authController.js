@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
@@ -137,6 +138,105 @@ const authController = {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch user'
+      });
+    }
+  },
+
+  forgotPassword: async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email is required'
+        });
+      }
+
+      const user = await User.findOne({ email });
+      // Always return success to prevent email enumeration
+      if (!user) {
+        return res.json({
+          success: true,
+          message: 'If an account with that email exists, a reset link has been sent.'
+        });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      await User.updateOne(
+        { email },
+        {
+          $set: {
+            resetToken,
+            resetTokenExpiry: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+          }
+        }
+      );
+
+      logger.info(`Password reset requested for: ${email}`);
+
+      res.json({
+        success: true,
+        message: 'If an account with that email exists, a reset link has been sent.',
+        // In production, remove this and send via email instead
+        ...(process.env.NODE_ENV !== 'production' && { resetToken })
+      });
+    } catch (error) {
+      logger.error('Forgot password error', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to process request'
+      });
+    }
+  },
+
+  resetPassword: async (req, res) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({
+          success: false,
+          error: 'Token and new password are required'
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters'
+        });
+      }
+
+      const user = await User.findOne({
+        resetToken: token,
+        resetTokenExpiry: { $gt: new Date() }
+      });
+
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid or expired reset token'
+        });
+      }
+
+      user.password = password;
+      user.resetToken = null;
+      user.resetTokenExpiry = null;
+      await user.save();
+
+      logger.info(`Password reset completed for: ${user.email}`);
+
+      res.json({
+        success: true,
+        message: 'Password has been reset successfully.'
+      });
+    } catch (error) {
+      logger.error('Reset password error', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reset password'
       });
     }
   }

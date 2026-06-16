@@ -24,6 +24,14 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false
     },
+    resetToken: {
+      type: String,
+      default: null
+    },
+    resetTokenExpiry: {
+      type: Date,
+      default: null
+    },
     createdAt: {
       type: Date,
       default: Date.now
@@ -56,10 +64,12 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Remove password from response
+// Remove sensitive fields from response
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
+  delete user.resetToken;
+  delete user.resetTokenExpiry;
   return user;
 };
 

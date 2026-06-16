@@ -148,6 +148,9 @@ export const Login = () => {
               />
               <span>Remember me</span>
             </label>
+            <Link to="/forgot-password" className="forgot-link">
+              Forgot Password?
+            </Link>
           </div>
 
           <button

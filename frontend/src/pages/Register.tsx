@@ -59,7 +59,7 @@ export const Register = () => {
     try {
       const response = await authService.register(credentials);
       if (response.success) {
-        navigate('/dashboard');
+        navigate('/login');
       } else {
         setError(response.error || 'Registration failed. Please try again.');
       }
