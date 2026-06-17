@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import type { User } from '../types';
 import authService from '../services/authService';
+import Typography from '@mui/material/Typography';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import SpaIcon from '@mui/icons-material/Spa';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import InsightsIcon from '@mui/icons-material/Insights';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
+import MenuIcon from '@mui/icons-material/Menu';
+import { navItem, staggerContainer } from '../utils/animations';
 
 interface MenuItem {
   id: string;
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   href: string;
 }
 
@@ -17,12 +28,12 @@ interface AppLayoutProps {
 }
 
 const menuItems: MenuItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard' },
-  { id: 'plants', label: 'My Plants', icon: '🌱', href: '/my-plants' },
-  { id: 'schedule', label: 'Schedule', icon: '📅', href: '/schedule' },
-  { id: 'tips', label: 'Care Tips', icon: '💡', href: '/care-tips' },
-  { id: 'charts', label: 'Analytics', icon: '📈', href: '/analytics' },
-  { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
+  { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="inherit" />, href: '/dashboard' },
+  { id: 'plants', label: 'My Plants', icon: <SpaIcon fontSize="inherit" />, href: '/my-plants' },
+  { id: 'schedule', label: 'Schedule', icon: <CalendarMonthIcon fontSize="inherit" />, href: '/schedule' },
+  { id: 'tips', label: 'Care Tips', icon: <LightbulbIcon fontSize="inherit" />, href: '/care-tips' },
+  { id: 'charts', label: 'Analytics', icon: <InsightsIcon fontSize="inherit" />, href: '/analytics' },
+  { id: 'settings', label: 'Settings', icon: <SettingsIcon fontSize="inherit" />, href: '/settings' },
 ];
 
 export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) => {
@@ -64,29 +75,32 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
         {/* Sidebar */}
         <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <div className="sidebar-header">
-            <div className="logo">🌱</div>
-            {sidebarOpen && <h2>PlantCare AI</h2>}
+            <motion.div className="logo" whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}><SpaIcon sx={{ fontSize: 32 }} /></motion.div>
+            {sidebarOpen && <Typography variant="h6" component="h2" sx={{ margin: 0, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>PlantCare AI</Typography>}
           </div>
 
-          <nav className="sidebar-nav">
+          <motion.nav className="sidebar-nav" variants={staggerContainer} initial="initial" animate="animate">
             {menuItems.map((item) => (
-              <button
+              <motion.button
                 key={item.id}
                 className={`nav-item ${activeMenu === item.id ? 'active' : ''}`}
                 onClick={() => handleMenuClick(item.href)}
                 title={item.label}
+                variants={navItem}
+                whileHover={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}
+                whileTap="tap"
               >
                 <span className="icon">{item.icon}</span>
-                {sidebarOpen && <span className="label">{item.label}</span>}
-              </button>
+                {sidebarOpen && <motion.span key={`label-${item.id}`} className="label" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>{item.label}</motion.span>}
+              </motion.button>
             ))}
-          </nav>
+          </motion.nav>
 
           <div className="sidebar-footer">
-            <button className="logout-sidebar-btn" onClick={handleLogout} title="Logout">
-              <span className="icon">🚪</span>
+            <motion.button className="logout-sidebar-btn" onClick={handleLogout} title="Logout" whileHover={{ backgroundColor: 'rgba(255,255,255,0.2)' }} whileTap={{ scale: 0.97 }}>
+              <span className="icon"><LogoutIcon fontSize="inherit" /></span>
               {sidebarOpen && <span className="label">Logout</span>}
-            </button>
+            </motion.button>
           </div>
         </aside>
 
@@ -99,10 +113,10 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 aria-label="Toggle sidebar"
               >
-                ☰
+                <MenuIcon fontSize="inherit" />
               </button>
               <div className="navbar-title">
-                <h1>{pageTitle}</h1>
+                <Typography variant="h5" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>{pageTitle}</Typography>
               </div>
               <div className="navbar-actions" ref={profileRef}>
                 <div className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} title={user?.name || 'User'}>
@@ -114,25 +128,25 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
                     <div className="profile-card-header">
                       <div className="profile-card-avatar">{initials}</div>
                       <div className="profile-card-info">
-                        <p className="profile-card-name">{user?.name || 'User'}</p>
-                        <p className="profile-card-email">{user?.email || ''}</p>
+                        <Typography variant="body2" sx={{ color: '#1a1a1a', margin: 0, lineHeight: 1.3, fontWeight: 700 }}>{user?.name || 'User'}</Typography>
+                        <Typography variant="caption" sx={{ color: '#888', margin: '3px 0 0 0', display: 'block', wordBreak: 'break-all', lineHeight: 1.3 }}>{user?.email || ''}</Typography>
                       </div>
                     </div>
                     <div className="profile-card-divider" />
                     <div className="profile-card-body">
                       <button className="profile-card-item" onClick={() => { setProfileOpen(false); navigate('/settings'); }}>
-                        <span className="profile-card-item-icon">⚙️</span>
+                        <span className="profile-card-item-icon"><SettingsIcon fontSize="inherit" /></span>
                         <span>Settings</span>
                       </button>
                       <button className="profile-card-item" onClick={() => { setProfileOpen(false); navigate('/my-plants'); }}>
-                        <span className="profile-card-item-icon">🌱</span>
+                        <span className="profile-card-item-icon"><SpaIcon fontSize="inherit" /></span>
                         <span>My Plants</span>
                       </button>
                     </div>
                     <div className="profile-card-divider" />
                     <div className="profile-card-footer">
                       <button className="profile-card-logout" onClick={handleLogout}>
-                        <span className="profile-card-item-icon">🚪</span>
+                        <span className="profile-card-item-icon"><LogoutIcon fontSize="inherit" /></span>
                         <span>Sign Out</span>
                       </button>
                     </div>
@@ -142,9 +156,14 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
             </div>
           </nav>
 
-          <main className="content">
+          <motion.main
+            className="content"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          >
             {children}
-          </main>
+          </motion.main>
         </div>
       </div>
 
@@ -292,6 +311,9 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
     width: 24px;
     text-align: center;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .profile-card-footer {
     padding: 8px 12px;

@@ -1,11 +1,74 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import type { Plant, WeatherData, WeatherSuggestion } from '../types';
 import { getWeatherForCurrentLocation, getPlantCareSuggestion } from '../services/weatherService';
 import plantService from '../services/plantService';
-import { calculateHealth } from '../utils/helpers';
+import { calculateHealth, getNextWatering } from '../utils/helpers';
 import { useRealtimeTimer } from '../hooks';
 import AppLayout from '../components/AppLayout';
+import MotionCard from '../components/MotionCard';
+import Typography from '@mui/material/Typography';
+import { fadeInUp, staggerContainer } from '../utils/animations';
 import '../styles/Dashboard.css';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
+import DeviceThermostatIcon from '@mui/icons-material/DeviceThermostat';
+import AirIcon from '@mui/icons-material/Air';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import WarningIcon from '@mui/icons-material/Warning';
+import YardIcon from '@mui/icons-material/Yard';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import CloseIcon from '@mui/icons-material/Close';
+import GrassIcon from '@mui/icons-material/Grass';
+import WbTwilightIcon from '@mui/icons-material/WbTwilight';
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import SpaIcon from '@mui/icons-material/Spa';
+import NightsStayIcon from '@mui/icons-material/NightsStay';
+import CloudIcon from '@mui/icons-material/Cloud';
+import GrainIcon from '@mui/icons-material/Grain';
+import UmbrellaIcon from '@mui/icons-material/Umbrella';
+import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
+import AcUnitIcon from '@mui/icons-material/AcUnit';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+
+const weatherIconMap: Record<string, React.ReactNode> = {
+  WbSunny: <WbSunnyIcon fontSize="inherit" />,
+  NightsStay: <NightsStayIcon fontSize="inherit" />,
+  WbPartlyCloudy: <CloudIcon fontSize="inherit" />,
+  Cloud: <CloudIcon fontSize="inherit" />,
+  Grain: <GrainIcon fontSize="inherit" />,
+  Umbrella: <UmbrellaIcon fontSize="inherit" />,
+  Thunderstorm: <ThunderstormIcon fontSize="inherit" />,
+  AcUnit: <AcUnitIcon fontSize="inherit" />,
+  DeviceThermostat: <DeviceThermostatIcon fontSize="inherit" />,
+};
+
+const renderWeatherIcon = (iconName: string): React.ReactNode => {
+  const icon = weatherIconMap[iconName];
+  if (icon) return icon;
+  return <DeviceThermostatIcon fontSize="inherit" />;
+};
+
+const suggestionIconMap: Record<string, React.ReactNode> = {
+  Water: <WaterDropIcon fontSize="inherit" />,
+  Cloud: <CloudIcon fontSize="inherit" />,
+  Hot: <WhatshotIcon fontSize="inherit" />,
+  Cold: <AcUnitIcon fontSize="inherit" />,
+  Humidity: <WaterDropIcon fontSize="inherit" />,
+  CheckCircle: <CheckCircleIcon fontSize="inherit" />,
+};
+
+const renderSuggestionIcon = (iconName: string): React.ReactNode => {
+  const icon = suggestionIconMap[iconName];
+  if (icon) return icon;
+  return <WbSunnyIcon fontSize="inherit" />;
+};
 
 export const Dashboard = () => {
   // Plant states — properly using setter
@@ -57,7 +120,7 @@ export const Dashboard = () => {
     feelsLike: 22,
     uvIndex: 6,
     windSpeed: 12,
-    weatherIcon: '⛅',
+    weatherIcon: 'WbPartlyCloudy',
     description: 'Partly cloudy',
   };
 
@@ -183,11 +246,11 @@ export const Dashboard = () => {
     <AppLayout activeMenu="dashboard" pageTitle="Dashboard">
       {/* Weather Section */}
       <section className="weather-section">
-        <div className="weather-card">
+        <MotionCard className="weather-card">
           <div className="weather-header">
             <div className="weather-title">
-              <h3>Today's Weather</h3>
-              <p className="weather-location">{currentWeather.city}</p>
+              <Typography variant="h6" component="h3" sx={{ margin: '0 0 4px 0', fontWeight: 600 }}>Today's Weather</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 500 }}>{currentWeather.city}</Typography>
             </div>
             <button
               className={`location-btn ${weatherLoading ? 'loading' : ''}`}
@@ -195,20 +258,20 @@ export const Dashboard = () => {
               disabled={weatherLoading}
               title="Use current location"
             >
-              {weatherLoading ? '⏳' : '📍'}
+              {weatherLoading ? <HourglassEmptyIcon fontSize="inherit" /> : <MyLocationIcon fontSize="inherit" />}
             </button>
           </div>
 
           {weatherError && (
             <div className="weather-error">
-              <span className="error-icon">⚠️</span>
+              <span className="error-icon"><WarningIcon fontSize="inherit" /></span>
               <p>{weatherError}</p>
             </div>
           )}
 
           <div className="weather-main">
             <div className="temperature">
-              <span className="weather-emoji">{currentWeather.weatherIcon}</span>
+              <span className="weather-emoji">{renderWeatherIcon(currentWeather.weatherIcon)}</span>
               <div className="temp-info">
                 <span className="temp-value">{currentWeather.temperature}°C</span>
                 <p className="temp-condition">{currentWeather.condition}</p>
@@ -219,66 +282,66 @@ export const Dashboard = () => {
 
           <div className="weather-details">
             <div className="weather-stat">
-              <span className="stat-icon">💧</span>
+              <span className="stat-icon"><WaterDropIcon fontSize="inherit" /></span>
               <span className="stat-label">Humidity</span>
               <span className="stat-value">{currentWeather.humidity}%</span>
             </div>
             <div className="weather-stat">
-              <span className="stat-icon">🌡️</span>
+              <span className="stat-icon"><DeviceThermostatIcon fontSize="inherit" /></span>
               <span className="stat-label">UV Index</span>
               <span className="stat-value">{currentWeather.uvIndex}</span>
             </div>
             <div className="weather-stat">
-              <span className="stat-icon">💨</span>
+              <span className="stat-icon"><AirIcon fontSize="inherit" /></span>
               <span className="stat-label">Wind</span>
               <span className="stat-value">{currentWeather.windSpeed} km/h</span>
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {weatherSuggestion && (
-          <div className="care-suggestion-card">
+          <MotionCard className="care-suggestion-card">
             <div className="suggestion-header">
-              <span className="suggestion-icon">{weatherSuggestion.icon}</span>
-              <h4>{weatherSuggestion.title}</h4>
+              <span className="suggestion-icon">{renderSuggestionIcon(weatherSuggestion.icon)}</span>
+              <Typography variant="overline" component="h4" sx={{ fontWeight: 700, color: '#2d8659', margin: 0, letterSpacing: 1 }}>{weatherSuggestion.title}</Typography>
             </div>
-            <p className="suggestion-message">{weatherSuggestion.message}</p>
-          </div>
+            <Typography variant="caption" sx={{ color: '#666', margin: 0, lineHeight: 1.4, paddingLeft: '30px' }}>{weatherSuggestion.message}</Typography>
+          </MotionCard>
         )}
 
         {/* Quick Stats — computed from real plant data */}
-        <div className="stats-cards">
-          <div className="stat-card">
-            <div className="stat-icon-box">🪴</div>
-            <p className="stat-count">{plants.length}</p>
-            <p className="stat-label">Total Plants</p>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon-box">💧</div>
-            <p className="stat-count">{needWaterCount}</p>
-            <p className="stat-label">Need Water</p>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon-box">✅</div>
-            <p className="stat-count">{healthyCount}</p>
-            <p className="stat-label">Healthy</p>
-          </div>
-        </div>
+        <motion.div className="stats-cards" variants={staggerContainer} initial="initial" animate="animate">
+          <MotionCard className="stat-card">
+            <div className="stat-icon-box"><YardIcon fontSize="inherit" /></div>
+            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{plants.length}</Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Plants</Typography>
+          </MotionCard>
+          <MotionCard className="stat-card">
+            <div className="stat-icon-box"><WaterDropIcon fontSize="inherit" /></div>
+            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{needWaterCount}</Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Need Water</Typography>
+          </MotionCard>
+          <MotionCard className="stat-card">
+            <div className="stat-icon-box"><CheckCircleIcon fontSize="inherit" /></div>
+            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{healthyCount}</Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Healthy</Typography>
+          </MotionCard>
+        </motion.div>
       </section>
 
       {/* Notifications panel */}
       {showNotifications && (
         <div className="notifications-panel">
           <div className="notifications-header">
-            <h4>🔔 Notifications</h4>
-            <button onClick={() => setShowNotifications(false)}>✕</button>
+            <Typography variant="subtitle1" component="h4" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><NotificationsIcon fontSize="inherit" /> Notifications</Typography>
+            <button onClick={() => setShowNotifications(false)}><CloseIcon fontSize="inherit" /></button>
           </div>
           {notifications.length > 0 ? (
             notifications.map((n, i) => (
-              <div key={i} className="notification-item">⚠️ {n}</div>
+              <div key={i} className="notification-item"><WarningIcon fontSize="inherit" /> {n}</div>
             ))
           ) : (
-            <p className="no-notifications">All plants are doing great! 🌿</p>
+            <p className="no-notifications">All plants are doing great! <GrassIcon fontSize="inherit" /></p>
           )}
         </div>
       )}
@@ -291,7 +354,7 @@ export const Dashboard = () => {
           onClick={() => setShowNotifications(s => !s)}
           style={{ position: 'relative' }}
         >
-          🔔
+          <NotificationsIcon fontSize="inherit" />
           {notifications.length > 0 && (
             <span className="notification-badge">{notifications.length}</span>
           )}
@@ -301,7 +364,7 @@ export const Dashboard = () => {
       {/* Plants Section */}
       <section className="plants-section">
         <div className="section-header">
-          <h2>My Plants</h2>
+          <Typography variant="h5" component="h2" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>My Plants</Typography>
           <button className="add-btn" onClick={handleAddPlantClick}>
             + Add Plant
           </button>
@@ -310,7 +373,7 @@ export const Dashboard = () => {
         {plantsLoading ? (
           <p className="loading-text">Loading plants...</p>
         ) : plants.length > 0 ? (
-          <div className="plants-grid">
+          <motion.div className="plants-grid" variants={staggerContainer} initial="initial" animate="animate">
             {plants.map((plant) => (
               <DashboardPlantCard
                 key={plant.id}
@@ -320,7 +383,7 @@ export const Dashboard = () => {
                 isWatered={wateredPlants.has(plant.id)}
               />
             ))}
-          </div>
+          </motion.div>
         ) : (
           <p className="no-plants">No plants yet. Add your first plant to get started!</p>
         )}
@@ -328,30 +391,30 @@ export const Dashboard = () => {
 
       {/* Tips Section */}
       <section className="tips-section">
-        <h2>💡 Plant Care Tips</h2>
-        <div className="tips-grid">
+        <Typography variant="h5" component="h2" sx={{ margin: 0, fontWeight: 700, color: '#333' }}><LightbulbIcon fontSize="inherit" /> Plant Care Tips</Typography>
+        <motion.div className="tips-grid" variants={staggerContainer} initial="initial" animate="animate">
           {[
-            { icon: '🌅', title: 'Watering Time', tip: 'Water your plants during early morning hours for best results.' },
-            { icon: '💨', title: 'Drainage', tip: 'Ensure proper drainage to prevent root rot and fungal issues.' },
-            { icon: '🌡️', title: 'Soil Check', tip: 'Check soil moisture before watering by touching the top layer.' },
-            { icon: '☀️', title: 'Light Exposure', tip: 'Keep plants away from direct heat sources and ensure adequate light.' },
+            { icon: <WbTwilightIcon fontSize="inherit" />, title: 'Watering Time', tip: 'Water your plants during early morning hours for best results.' },
+            { icon: <AirIcon fontSize="inherit" />, title: 'Drainage', tip: 'Ensure proper drainage to prevent root rot and fungal issues.' },
+            { icon: <DeviceThermostatIcon fontSize="inherit" />, title: 'Soil Check', tip: 'Check soil moisture before watering by touching the top layer.' },
+            { icon: <WbSunnyIcon fontSize="inherit" />, title: 'Light Exposure', tip: 'Keep plants away from direct heat sources and ensure adequate light.' },
           ].map((tip) => (
-            <div key={tip.title} className="tip-card">
+            <MotionCard key={tip.title} className="tip-card">
               <span className="tip-icon">{tip.icon}</span>
-              <h4>{tip.title}</h4>
-              <p>{tip.tip}</p>
-            </div>
+              <Typography variant="subtitle1" component="h4" sx={{ margin: '0 0 12px 0', fontWeight: 700, color: '#333' }}>{tip.title}</Typography>
+              <Typography variant="body2" sx={{ color: '#666', margin: 0, lineHeight: 1.6 }}>{tip.tip}</Typography>
+            </MotionCard>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* Edit Plant Modal */}
       {editingPlant && (
-        <div className="modal-overlay" onClick={handleCancelEdit}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <motion.div className="modal-overlay" onClick={handleCancelEdit} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.div className="modal-card" onClick={e => e.stopPropagation()} initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
             <div className="modal-header">
-              <h2>Edit Plant</h2>
-              <button className="modal-close" onClick={handleCancelEdit} title="Close">✕</button>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}>Edit Plant</Typography>
+              <button className="modal-close" onClick={handleCancelEdit} title="Close"><CloseIcon fontSize="inherit" /></button>
             </div>
             <div className="modal-body">
               {actionError && <p className="error-text" style={{ marginBottom: 12 }}>{actionError}</p>}
@@ -378,17 +441,17 @@ export const Dashboard = () => {
               <button className="modal-btn cancel" onClick={handleCancelEdit}>Cancel</button>
               <button className="modal-btn save" onClick={handleSaveEdit}>Save Changes</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Add Plant Modal */}
       {showAddPlantModal && (
-        <div className="modal-overlay" onClick={() => setShowAddPlantModal(false)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <motion.div className="modal-overlay" onClick={() => setShowAddPlantModal(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.div className="modal-card" onClick={e => e.stopPropagation()} initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
             <div className="modal-header">
-              <h2>Add New Plant</h2>
-              <button className="modal-close" onClick={() => setShowAddPlantModal(false)} title="Close">✕</button>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}>Add New Plant</Typography>
+              <button className="modal-close" onClick={() => setShowAddPlantModal(false)} title="Close"><CloseIcon fontSize="inherit" /></button>
             </div>
             <div className="modal-body">
               {actionError && <p className="error-text" style={{ marginBottom: 12 }}>{actionError}</p>}
@@ -415,17 +478,17 @@ export const Dashboard = () => {
               <button className="modal-btn cancel" onClick={() => setShowAddPlantModal(false)}>Cancel</button>
               <button className="modal-btn save" onClick={handleSaveNewPlant}>Add Plant</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Search Modal */}
       {showSearch && (
-        <div className="modal-overlay">
-          <div className="modal-card">
+        <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.div className="modal-card" initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
             <div className="modal-header">
-              <h2>🔍 Search Plants</h2>
-              <button className="modal-close" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} title="Close">✕</button>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><SearchIcon fontSize="inherit" /> Search Plants</Typography>
+              <button className="modal-close" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} title="Close"><CloseIcon fontSize="inherit" /></button>
             </div>
             <div className="modal-body">
               <div className="form-group">
@@ -442,9 +505,9 @@ export const Dashboard = () => {
                     {searchResults.map(plant => (
                       <div key={plant.id} className="search-result-item">
                         <div className="result-info">
-                          <h4>{plant.name}</h4>
-                          <p className="result-species">{plant.species}</p>
-                          <p className="result-schedule">Every {plant.wateringSchedule} days</p>
+                          <Typography variant="subtitle2" component="h4" sx={{ margin: '0 0 4px 0', fontWeight: 600, color: '#333' }}>{plant.name}</Typography>
+                          <Typography variant="caption" sx={{ margin: '0 0 4px 0', color: '#666', display: 'block' }}>{plant.species}</Typography>
+                          <Typography variant="caption" sx={{ margin: 0, color: '#999', display: 'block' }}>Every {plant.wateringSchedule} days</Typography>
                         </div>
                         <button className="small-btn edit-btn"
                           onClick={() => { handleEditPlant(plant.id); setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>
@@ -461,8 +524,8 @@ export const Dashboard = () => {
             <div className="modal-footer">
               <button className="modal-btn cancel" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>Close</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </AppLayout>
   );
@@ -483,39 +546,53 @@ const DashboardPlantCard = ({
   const timer = useRealtimeTimer(plant.lastWatered);
   const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
   const needsWater = health <= 0;
+  const nextWatering = getNextWatering(plant.lastWatered, plant.wateringSchedule);
 
   return (
-    <div className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
+    <motion.div
+      className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}
+      variants={fadeInUp}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+      style={{ willChange: 'transform' }}
+    >
       <div className="plant-header">
-        <span className="plant-emoji">🪴</span>
+        <span className="plant-emoji"><SpaIcon fontSize="inherit" /></span>
         <span className={`health-badge ${needsWater ? 'warning' : 'good'}`}>
-          {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
+          {needsWater ? <><WarningIcon fontSize="inherit" /> Needs Water</> : <><CheckCircleIcon fontSize="inherit" /> Healthy</>}
         </span>
       </div>
 
-      <h3 className="plant-name">{plant.name}</h3>
-      <p className="plant-species">{plant.species}</p>
+      <Typography variant="h6" component="h3" sx={{ margin: '0 0 4px 0', fontWeight: 700, color: '#333' }}>{plant.name}</Typography>
+      <Typography variant="caption" sx={{ color: '#888', fontStyle: 'italic', margin: '0 0 16px 0', display: 'block' }}>{plant.species}</Typography>
 
       <div className="plant-details">
         <div className="detail-item">
-          <span className="detail-icon">💧</span>
+          <span className="detail-icon"><WaterDropIcon fontSize="inherit" /></span>
           <div className="detail-content">
-            <p className="detail-label">Watering</p>
-            <p className="detail-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
+            <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500, display: 'block' }}>Watering</Typography>
+            <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</Typography>
           </div>
         </div>
         <div className="detail-item">
-          <span className="detail-icon">📅</span>
+          <span className="detail-icon"><CalendarMonthIcon fontSize="inherit" /></span>
           <div className="detail-content">
-            <p className="detail-label">Last Watered</p>
-            <p className="detail-value">{timer}</p>
+            <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500, display: 'block' }}>Last Watered</Typography>
+            <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>{timer}</Typography>
           </div>
         </div>
         <div className="detail-item">
-          <span className="detail-icon">❤️</span>
+          <span className="detail-icon"><NotificationsIcon fontSize="inherit" /></span>
           <div className="detail-content">
-            <p className="detail-label">Health</p>
-            <p className="detail-value">
+            <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500, display: 'block' }}>Next Watering</Typography>
+            <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>{nextWatering}</Typography>
+          </div>
+        </div>
+        <div className="detail-item">
+          <span className="detail-icon"><FavoriteIcon fontSize="inherit" /></span>
+          <div className="detail-content">
+            <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500, display: 'block' }}>Health</Typography>
+            <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>
               <span style={{
                 display: 'inline-block',
                 width: `${Math.max(health, 5)}%`,
@@ -527,7 +604,7 @@ const DashboardPlantCard = ({
                 verticalAlign: 'middle',
               }}></span>
               {health}%
-            </p>
+            </Typography>
           </div>
         </div>
       </div>
@@ -538,16 +615,16 @@ const DashboardPlantCard = ({
           onClick={() => onWater(plant.id, plant.name)}
           disabled={isWatered}
         >
-          {isWatered ? '✅ Watered!' : '💧 Water Now'}
+          {isWatered ? <><CheckCircleIcon fontSize="inherit" /> Watered!</> : <><WaterDropIcon fontSize="inherit" /> Water Now</>}
         </button>
         <button
           className="action-btn secondary"
           onClick={() => onEdit(plant.id)}
         >
-          📝 Edit
+          <EditIcon fontSize="inherit" /> Edit
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

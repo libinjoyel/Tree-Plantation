@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import Typography from '@mui/material/Typography';
 import '../styles/Auth.css';
+import SpaIcon from '@mui/icons-material/Spa';
 
 export const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -55,9 +57,9 @@ export const ResetPassword = () => {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="logo">🌱</div>
-            <h1>PlantCare AI</h1>
-            <p className="subtitle">Invalid reset link</p>
+            <div className="logo"><SpaIcon sx={{ fontSize: 40 }} /></div>
+            <Typography variant="h4" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>PlantCare AI</Typography>
+            <Typography variant="body2" sx={{ color: '#666', margin: '8px 0 0 0' }}>Invalid reset link</Typography>
           </div>
           <div className="error-message">
             This password reset link is invalid or missing a token.
@@ -74,9 +76,9 @@ export const ResetPassword = () => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="logo">🌱</div>
-          <h1>PlantCare AI</h1>
-          <p className="subtitle">Enter your new password</p>
+          <div className="logo"><SpaIcon sx={{ fontSize: 40 }} /></div>
+          <Typography variant="h4" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>PlantCare AI</Typography>
+          <Typography variant="body2" sx={{ color: '#666', margin: '8px 0 0 0' }}>Enter your new password</Typography>
         </div>
 
         {error && <div className="error-message">{error}</div>}

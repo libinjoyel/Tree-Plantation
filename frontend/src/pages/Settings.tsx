@@ -2,7 +2,20 @@ import { useState, useEffect } from 'react';
 import type { AppSettings, UserInfo } from '../types';
 import settingsService from '../services/settingsService';
 import AppLayout from '../components/AppLayout';
+import MotionCard from '../components/MotionCard';
+import Typography from '@mui/material/Typography';
 import '../styles/Dashboard.css';
+import PersonIcon from '@mui/icons-material/Person';
+import SaveIcon from '@mui/icons-material/Save';
+import LockIcon from '@mui/icons-material/Lock';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import PaletteIcon from '@mui/icons-material/Palette';
+import WarningIcon from '@mui/icons-material/Warning';
+import DeleteIcon from '@mui/icons-material/Delete';
+import toast from 'react-hot-toast';
 
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -94,7 +107,7 @@ export const Settings = () => {
   // Save account settings (username only, email is read-only)
   const handleSaveAccountSettings = async () => {
     if (!userInfo.username.trim()) {
-      alert('❌ Username cannot be empty!');
+      toast.error('Username cannot be empty!');
       return;
     }
 
@@ -102,12 +115,12 @@ export const Settings = () => {
       const res = await settingsService.updateUserInfo({ name: userInfo.username });
       if (res.success && res.data) {
         setUserInfo(res.data.userInfo);
-        alert('✅ Account settings updated successfully!');
+        toast.success('Account settings updated successfully!');
       } else {
-        alert(`❌ Failed to update account settings: ${res.error}`);
+        toast.error(`Failed to update account settings: ${res.error}`);
       }
     } catch (err: any) {
-      alert(`❌ Error: ${err.message || 'Failed to save account settings'}`);
+      toast.error(`Error: ${err.message || 'Failed to save account settings'}`);
     }
   };
 
@@ -117,12 +130,12 @@ export const Settings = () => {
       const res = await settingsService.updateSettings(settings);
       if (res.success && res.data) {
         setSettings(res.data.settings);
-        alert('✅ Preferences saved successfully!');
+        toast.success('Preferences saved successfully!');
       } else {
-        alert(`❌ Failed to save preferences: ${res.error}`);
+        toast.error(`Failed to save preferences: ${res.error}`);
       }
     } catch (err: any) {
-      alert(`❌ Error: ${err.message || 'Failed to save preferences'}`);
+      toast.error(`Error: ${err.message || 'Failed to save preferences'}`);
     }
   };
 
@@ -133,15 +146,15 @@ export const Settings = () => {
 
   const handleChangePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      alert('❌ Please fill in all password fields!');
+      toast.error('Please fill in all password fields!');
       return;
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('❌ New passwords do not match!');
+      toast.error('New passwords do not match!');
       return;
     }
     if (passwordData.newPassword.length < 6) {
-      alert('❌ Password must be at least 6 characters long!');
+      toast.error('Password must be at least 6 characters long!');
       return;
     }
 
@@ -152,19 +165,19 @@ export const Settings = () => {
       });
 
       if (res.success) {
-        alert('✅ Password changed successfully!');
+        toast.success('Password changed successfully!');
         setShowChangePassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
-        alert(`❌ Failed to change password: ${res.error}`);
+        toast.error(`Failed to change password: ${res.error}`);
       }
     } catch (err: any) {
-      alert(`❌ Error: ${err.message || 'Failed to change password'}`);
+      toast.error(`Error: ${err.message || 'Failed to change password'}`);
     }
   };
 
   return (
-    <AppLayout activeMenu="settings" pageTitle="⚙️ Settings">
+    <AppLayout activeMenu="settings" pageTitle="Settings">
       {loading ? (
         <div className="loading-state">
           <div className="loading-spinner"></div>
@@ -172,14 +185,14 @@ export const Settings = () => {
         </div>
       ) : error ? (
         <div className="error-state">
-          <p>❌ Error: {error}</p>
+          <p><CloseIcon fontSize="inherit" /> Error: {error}</p>
         </div>
       ) : (
         <>
           {/* User Account Section */}
           <div className="settings-section">
-            <h2>👤 Account Settings</h2>
-            <div className="settings-card">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333', paddingBottom: '12px', borderBottom: '2px solid #e0e0e0' }}><PersonIcon fontSize="inherit" /> Account Settings</Typography>
+            <MotionCard className="settings-card">
               <div className="form-group">
                 <label htmlFor="username">Username</label>
                 <input
@@ -204,18 +217,18 @@ export const Settings = () => {
               </div>
 
               <button className="btn primary" onClick={handleSaveAccountSettings}>
-                💾 Save Account Settings
+                <SaveIcon fontSize="inherit" /> Save Account Settings
               </button>
-            </div>
+            </MotionCard>
           </div>
 
           {/* Security Section */}
           <div className="settings-section">
-            <h2>🔒 Security</h2>
-            <div className="settings-card">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333', paddingBottom: '12px', borderBottom: '2px solid #e0e0e0' }}><LockIcon fontSize="inherit" /> Security</Typography>
+            <MotionCard className="settings-card">
               {!showChangePassword ? (
                 <button className="btn primary" onClick={handleChangePasswordClick}>
-                  🔑 Change Password
+                  <VpnKeyIcon fontSize="inherit" /> Change Password
                 </button>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -257,25 +270,25 @@ export const Settings = () => {
 
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button className="btn primary" onClick={handleChangePassword}>
-                      ✅ Update Password
+                      <CheckCircleIcon fontSize="inherit" /> Update Password
                     </button>
                     <button className="btn secondary" onClick={handleChangePasswordClick}>
-                      ❌ Cancel
+                      <CloseIcon fontSize="inherit" /> Cancel
                     </button>
                   </div>
                 </div>
               )}
-            </div>
+            </MotionCard>
           </div>
 
           {/* Notifications Section */}
           <div className="settings-section">
-            <h2>🔔 Notifications</h2>
-            <div className="settings-card">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333', paddingBottom: '12px', borderBottom: '2px solid #e0e0e0' }}><NotificationsIcon fontSize="inherit" /> Notifications</Typography>
+            <MotionCard className="settings-card">
               <div className="settings-toggle">
                 <div>
                   <label htmlFor="notifications-enabled">Enable All Notifications</label>
-                  <p className="toggle-description">Receive all types of notifications</p>
+                  <Typography variant="caption" sx={{ color: '#999', margin: '4px 0 0 0', display: 'block' }}>Receive all types of notifications</Typography>
                 </div>
                 <input
                   id="notifications-enabled"
@@ -289,7 +302,7 @@ export const Settings = () => {
               <div className="settings-toggle">
                 <div>
                   <label htmlFor="email-alerts">Email Alerts</label>
-                  <p className="toggle-description">Get important updates via email</p>
+                  <Typography variant="caption" sx={{ color: '#999', margin: '4px 0 0 0', display: 'block' }}>Get important updates via email</Typography>
                 </div>
                 <input
                   id="email-alerts"
@@ -304,7 +317,7 @@ export const Settings = () => {
               <div className="settings-toggle">
                 <div>
                   <label htmlFor="watering-reminders">Watering Reminders</label>
-                  <p className="toggle-description">Be reminded when plants need water</p>
+                  <Typography variant="caption" sx={{ color: '#999', margin: '4px 0 0 0', display: 'block' }}>Be reminded when plants need water</Typography>
                 </div>
                 <input
                   id="watering-reminders"
@@ -319,7 +332,7 @@ export const Settings = () => {
               <div className="settings-toggle">
                 <div>
                   <label htmlFor="weekly-reports">Weekly Reports</label>
-                  <p className="toggle-description">Receive weekly plant health reports</p>
+                  <Typography variant="caption" sx={{ color: '#999', margin: '4px 0 0 0', display: 'block' }}>Receive weekly plant health reports</Typography>
                 </div>
                 <input
                   id="weekly-reports"
@@ -330,13 +343,13 @@ export const Settings = () => {
                   disabled={!settings.notificationsEnabled}
                 />
               </div>
-            </div>
+            </MotionCard>
           </div>
 
           {/* Preferences Section */}
           <div className="settings-section">
-            <h2>🎨 Preferences</h2>
-            <div className="settings-card">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333', paddingBottom: '12px', borderBottom: '2px solid #e0e0e0' }}><PaletteIcon fontSize="inherit" /> Preferences</Typography>
+            <MotionCard className="settings-card">
               <div className="form-group">
                 <label htmlFor="language">Language</label>
                 <select
@@ -375,7 +388,7 @@ export const Settings = () => {
               <div className="settings-toggle">
                 <div>
                   <label htmlFor="dark-mode">Dark Mode</label>
-                  <p className="toggle-description">Enable dark theme for comfortable viewing</p>
+                  <Typography variant="caption" sx={{ color: '#999', margin: '4px 0 0 0', display: 'block' }}>Enable dark theme for comfortable viewing</Typography>
                 </div>
                 <input
                   id="dark-mode"
@@ -387,26 +400,26 @@ export const Settings = () => {
               </div>
 
               <button className="btn primary" onClick={handleSavePreferences}>
-                💾 Save Preferences
+                <SaveIcon fontSize="inherit" /> Save Preferences
               </button>
-            </div>
+            </MotionCard>
           </div>
 
           {/* Danger Zone */}
           <div className="settings-section">
-            <h2>⚠️ Danger Zone</h2>
-            <div className="settings-card danger">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#c0392b', paddingBottom: '12px', borderBottom: '2px solid #ff6b6b' }}><WarningIcon fontSize="inherit" /> Danger Zone</Typography>
+            <MotionCard className="settings-card danger">
               <button
                 className="btn danger"
                 onClick={() => {
                   if (window.confirm('Are you sure? This action cannot be undone.')) {
-                    alert('❌ Account deletion request submitted. We will process it within 30 days.');
+                    toast.success('Account deletion request submitted. We will process it within 30 days.');
                   }
                 }}
               >
-                🗑️ Delete Account
+                <DeleteIcon fontSize="inherit" /> Delete Account
               </button>
-            </div>
+            </MotionCard>
           </div>
         </>
       )}

@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LoginCredentials } from '../types';
 import authService from '../services/authService';
+import Typography from '@mui/material/Typography';
 import '../styles/Auth.css';
+import SpaIcon from '@mui/icons-material/Spa';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 export const Login = () => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
@@ -84,9 +88,9 @@ export const Login = () => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="logo">🌱</div>
-          <h1>PlantCare AI</h1>
-          <p className="subtitle">Welcome back! Let's grow together.</p>
+          <div className="logo"><SpaIcon sx={{ fontSize: 40 }} /></div>
+          <Typography variant="h4" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>PlantCare AI</Typography>
+          <Typography variant="body2" sx={{ color: '#666', margin: '8px 0 0 0' }}>Welcome back! Let's grow together.</Typography>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -131,7 +135,7 @@ export const Login = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? <VisibilityOffIcon fontSize="inherit" /> : <VisibilityIcon fontSize="inherit" />}
               </button>
             </div>
             {validationErrors.password && (

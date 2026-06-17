@@ -21,6 +21,20 @@ export const removeFromStorage = (key: string): void => {
   localStorage.removeItem(key);
 };
 
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import calendar from 'dayjs/plugin/calendar';
+
+dayjs.extend(relativeTime);
+dayjs.extend(calendar, {
+  sameDay: '[Today]',
+  nextDay: '[Tomorrow]',
+  nextWeek: 'dddd',
+  lastDay: '[Yesterday]',
+  lastWeek: '[Last] dddd',
+  sameElse: 'MMM D, YYYY',
+});
+
 // Plant health calculation — dynamic percentage based on lastWatered vs wateringSchedule
 export const calculateHealth = (lastWatered: Date | string, wateringSchedule: number): number => {
   const elapsed = Date.now() - new Date(lastWatered).getTime();
@@ -29,25 +43,14 @@ export const calculateHealth = (lastWatered: Date | string, wateringSchedule: nu
   return Math.max(0, Math.min(100, Math.round(health)));
 };
 
-// Real-time human-readable time since last watered
+// Human-readable time since last watered (e.g. "2 days ago")
 export const formatTimeSince = (lastWatered: Date | string): string => {
-  const elapsed = Date.now() - new Date(lastWatered).getTime();
-  const totalSeconds = Math.floor(elapsed / 1000);
-  if (totalSeconds < 0) return 'just now';
+  return dayjs(lastWatered).fromNow();
+};
 
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    const remainingHours = hours % 24;
-    return `${days}d ${remainingHours}h ago`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ago`;
-  }
-  return `${minutes}m ago`;
+// Human-readable next watering date (e.g. "Tomorrow", "Today", "Wednesday")
+export const getNextWatering = (lastWatered: Date | string, scheduleDays: number): string => {
+  return dayjs(lastWatered).add(scheduleDays, 'day').calendar();
 };
 
 // Date utilities

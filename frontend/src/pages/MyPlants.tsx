@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import type { Plant } from '../types';
 import plantService from '../services/plantService';
-import { calculateHealth } from '../utils/helpers';
+import { calculateHealth, getNextWatering } from '../utils/helpers';
 import { useRealtimeTimer } from '../hooks';
 import AppLayout from '../components/AppLayout';
+import Typography from '@mui/material/Typography';
 import '../styles/Dashboard.css';
+import { fadeInUp, staggerContainer } from '../utils/animations';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SpaIcon from '@mui/icons-material/Spa';
 
 export const MyPlants = () => {
   const [plants, setPlants] = useState<Plant[]>([]);
@@ -28,9 +41,6 @@ export const MyPlants = () => {
     }
     setLoading(false);
   };
-
-  const getDaysSince = (date: Date): number =>
-    Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
 
   const handleEditPlant = (plantId: string) => {
     const plant = plants.find(p => p.id === plantId);
@@ -124,10 +134,10 @@ export const MyPlants = () => {
   };
 
   return (
-    <AppLayout activeMenu="plants" pageTitle="🌱 My Plants">
+    <AppLayout activeMenu="plants" pageTitle="My Plants">
       <div className="section">
         <div className="section-header">
-          <h2>🌱 My Plants Collection</h2>
+          <Typography variant="h5" component="h2" sx={{ margin: 0, fontWeight: 700, color: '#333' }}><SpaIcon fontSize="inherit" /> My Plants Collection</Typography>
           <button className="btn primary" onClick={handleAddPlantClick}>
             + Add Plant
           </button>
@@ -138,7 +148,7 @@ export const MyPlants = () => {
         ) : plants.length === 0 ? (
           <p className="no-plants">No plants yet. Add your first plant to get started!</p>
         ) : (
-          <div className="plants-grid">
+          <motion.div className="plants-grid" variants={staggerContainer} initial="initial" animate="animate">
             {plants.map(plant => (
               <PlantCard
                 key={plant.id}
@@ -149,17 +159,17 @@ export const MyPlants = () => {
                 isWatered={wateredPlants.has(plant.id)}
               />
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Edit Modal */}
       {editingPlant && (
-        <div className="modal-overlay" onClick={handleCancelEdit}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <motion.div className="modal-overlay" onClick={handleCancelEdit} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.div className="modal-card" onClick={e => e.stopPropagation()} initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
             <div className="modal-header">
-              <h2>📝 Edit Plant</h2>
-              <button className="modal-close" onClick={handleCancelEdit} title="Close">✕</button>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><EditIcon fontSize="inherit" /> Edit Plant</Typography>
+              <button className="modal-close" onClick={handleCancelEdit} title="Close"><CloseIcon fontSize="inherit" /></button>
             </div>
             <div className="modal-body">
               {actionError && <p className="error-text" style={{ marginBottom: 12 }}>{actionError}</p>}
@@ -186,17 +196,17 @@ export const MyPlants = () => {
               <button className="modal-btn cancel" onClick={handleCancelEdit}>Cancel</button>
               <button className="modal-btn save" onClick={handleSaveEdit}>Save Changes</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Add Plant Modal */}
       {showAddPlantModal && (
-        <div className="modal-overlay" onClick={() => { setShowAddPlantModal(false); setActionError(''); }}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <motion.div className="modal-overlay" onClick={() => { setShowAddPlantModal(false); setActionError(''); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.div className="modal-card" onClick={e => e.stopPropagation()} initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
             <div className="modal-header">
-              <h2>🌱 Add New Plant</h2>
-              <button className="modal-close" onClick={() => { setShowAddPlantModal(false); setActionError(''); }} title="Close">✕</button>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><SpaIcon fontSize="inherit" /> Add New Plant</Typography>
+              <button className="modal-close" onClick={() => { setShowAddPlantModal(false); setActionError(''); }} title="Close"><CloseIcon fontSize="inherit" /></button>
             </div>
             <div className="modal-body">
               {actionError && <p className="error-text" style={{ marginBottom: 12 }}>{actionError}</p>}
@@ -223,8 +233,8 @@ export const MyPlants = () => {
               <button className="modal-btn cancel" onClick={() => { setShowAddPlantModal(false); setActionError(''); }}>Cancel</button>
               <button className="modal-btn save" onClick={handleSaveNewPlant}>Add Plant</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </AppLayout>
   );
@@ -247,38 +257,52 @@ const PlantCard = ({
   const timer = useRealtimeTimer(plant.lastWatered);
   const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
   const needsWater = health <= 0;
+  const nextWatering = getNextWatering(plant.lastWatered, plant.wateringSchedule);
 
   return (
-    <div className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}>
+    <motion.div
+      className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}
+      variants={fadeInUp}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+      style={{ willChange: 'transform' }}
+    >
       <div className="plant-header">
-        <span className="plant-icon">🪴</span>
+        <span className="plant-icon"><SpaIcon fontSize="inherit" /></span>
         <span className={`plant-status ${needsWater ? 'warning' : ''}`}>
-          {needsWater ? '⚠️ Needs Water' : '✅ Healthy'}
+          {needsWater ? <><WarningIcon fontSize="inherit" /> Needs Water</> : <><CheckCircleIcon fontSize="inherit" /> Healthy</>}
         </span>
       </div>
-      <h3>{plant.name}</h3>
-      <p className="plant-species">{plant.species}</p>
+      <Typography variant="h6" component="h3" sx={{ margin: '0 0 4px 0', fontWeight: 700, color: '#333' }}>{plant.name}</Typography>
+      <Typography variant="caption" sx={{ color: '#888', fontStyle: 'italic', margin: '0 0 16px 0', display: 'block' }}>{plant.species}</Typography>
 
       <div className="plant-info">
         <div className="info-item">
-          <span className="info-icon">💧</span>
+          <span className="info-icon"><WaterDropIcon fontSize="inherit" /></span>
           <div>
-            <p>Watering</p>
-            <p className="info-value">Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</p>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, margin: 0, display: 'block' }}>Watering</Typography>
+            <Typography variant="body2" sx={{ color: '#333', fontWeight: 600, margin: 0 }}>Every {plant.wateringSchedule} day{plant.wateringSchedule !== 1 ? 's' : ''}</Typography>
           </div>
         </div>
         <div className="info-item">
-          <span className="info-icon">📅</span>
+          <span className="info-icon"><CalendarMonthIcon fontSize="inherit" /></span>
           <div>
-            <p>Last Watered</p>
-            <p className="info-value">{timer}</p>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, margin: 0, display: 'block' }}>Last Watered</Typography>
+            <Typography variant="body2" sx={{ color: '#333', fontWeight: 600, margin: 0 }}>{timer}</Typography>
           </div>
         </div>
         <div className="info-item">
-          <span className="info-icon">❤️</span>
+          <span className="info-icon"><NotificationsIcon fontSize="inherit" /></span>
           <div>
-            <p>Health</p>
-            <p className="info-value">{health}%</p>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, margin: 0, display: 'block' }}>Next Watering</Typography>
+            <Typography variant="body2" sx={{ color: '#333', fontWeight: 600, margin: 0 }}>{nextWatering}</Typography>
+          </div>
+        </div>
+        <div className="info-item">
+          <span className="info-icon"><FavoriteIcon fontSize="inherit" /></span>
+          <div>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, margin: 0, display: 'block' }}>Health</Typography>
+            <Typography variant="body2" sx={{ color: '#333', fontWeight: 600, margin: 0 }}>{health}%</Typography>
           </div>
         </div>
       </div>
@@ -289,16 +313,16 @@ const PlantCard = ({
           onClick={() => onWater(plant.id)}
           disabled={isWatered}
         >
-          {isWatered ? '✅ Watered!' : '💧 Water Now'}
+          {isWatered ? <><CheckCircleIcon fontSize="inherit" /> Watered!</> : <><WaterDropIcon fontSize="inherit" /> Water Now</>}
         </button>
         <button className="action-btn secondary" onClick={() => onEdit(plant.id)}>
-          📝 Edit
+          <EditIcon fontSize="inherit" /> Edit
         </button>
         <button className="action-btn danger" onClick={() => onDelete(plant.id)}>
-          🗑️
+          <DeleteIcon fontSize="inherit" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import type { ScheduleItem, Plant } from '../types';
 import scheduleService from '../services/scheduleService';
 import plantService from '../services/plantService';
 import AppLayout from '../components/AppLayout';
+import MotionCard from '../components/MotionCard';
+import Typography from '@mui/material/Typography';
 import '../styles/Dashboard.css';
+import { fadeInUp, staggerContainer } from '../utils/animations';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InsightsIcon from '@mui/icons-material/Insights';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import WarningIcon from '@mui/icons-material/Warning';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import CloseIcon from '@mui/icons-material/Close';
 
 const formatDueDate = (dueDate: string): { text: string; isOverdue: boolean } => {
   const today = new Date();
@@ -160,7 +177,14 @@ export const Schedule = () => {
   const renderTaskRow = (task: ScheduleItem) => {
     const dueInfo = formatDueDate(task.dueDate);
     return (
-      <div key={task.id} className={`schedule-item ${task.completed ? 'completed' : ''}`}>
+      <motion.div
+        key={task.id}
+        className={`schedule-item ${task.completed ? 'completed' : ''}`}
+        variants={fadeInUp}
+        whileHover={{ y: -2, x: 4 }}
+        transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+        style={{ willChange: 'transform' }}
+      >
         <div className="schedule-left">
           <input
             type="checkbox"
@@ -169,17 +193,17 @@ export const Schedule = () => {
             className="schedule-checkbox"
           />
           <div className="schedule-info">
-            <h4>{task.plantName}</h4>
-            <p className="task-description">{task.task}</p>
+            <Typography variant="subtitle2" component="h4" sx={{ margin: 0, fontWeight: 600, color: '#333' }}>{task.plantName}</Typography>
+            <Typography variant="caption" sx={{ margin: '4px 0 0 0', color: '#666', display: 'block' }}>{task.task}</Typography>
           </div>
         </div>
         <div className="schedule-right">
           <div className="schedule-date">
-            <span className="date-icon">📅</span>
+            <span className="date-icon"><CalendarMonthIcon fontSize="inherit" /></span>
             <span>{task.dueDate}</span>
           </div>
           <div className="schedule-time">
-            <span className="time-icon">🕐</span>
+            <span className="time-icon"><AccessTimeIcon fontSize="inherit" /></span>
             <span>{task.time}</span>
           </div>
           {!task.completed && (
@@ -193,18 +217,18 @@ export const Schedule = () => {
             </>
           )}
           <button className="small-btn edit-btn" onClick={() => openEditModal(task)} title="Edit">
-            📝
+            <EditIcon fontSize="inherit" />
           </button>
           <button className="small-btn delete-btn" onClick={() => handleDelete(task.id)} title="Delete">
-            🗑️
+            <DeleteIcon fontSize="inherit" />
           </button>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
   return (
-    <AppLayout activeMenu="schedule" pageTitle="📅 Schedule">
+    <AppLayout activeMenu="schedule" pageTitle="Schedule">
       {loading ? (
         <p className="loading-text">Loading schedules...</p>
       ) : (
@@ -212,93 +236,93 @@ export const Schedule = () => {
           {/* Upcoming Tasks */}
           <div className="section">
             <div className="section-header">
-              <h2>📋 Upcoming Tasks ({upcomingTasks.length})</h2>
+              <Typography variant="h5" component="h2" sx={{ margin: 0, fontWeight: 700, color: '#333' }}><FormatListBulletedIcon fontSize="inherit" /> Upcoming Tasks ({upcomingTasks.length})</Typography>
               <button className="add-btn" onClick={openAddModal}>
                 + Add Task
               </button>
             </div>
-            <div className="schedule-list">
+            <motion.div className="schedule-list" variants={staggerContainer} initial="initial" animate="animate">
               {upcomingTasks.length > 0
                 ? upcomingTasks.map(renderTaskRow)
-                : <p className="no-data">No upcoming tasks! 🎉</p>
+                : <p className="no-data">No upcoming tasks! <CelebrationIcon fontSize="inherit" /></p>
               }
-            </div>
+            </motion.div>
           </div>
 
           {/* Completed Tasks */}
           <div className="section">
-            <h2>✅ Completed Tasks ({completedTasks.length})</h2>
-            <div className="schedule-list">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333' }}><CheckCircleIcon fontSize="inherit" /> Completed Tasks ({completedTasks.length})</Typography>
+            <motion.div className="schedule-list" variants={staggerContainer} initial="initial" animate="animate">
               {completedTasks.length > 0
                 ? completedTasks.map(renderTaskRow)
                 : <p className="no-data">No completed tasks yet!</p>
               }
-            </div>
+            </motion.div>
           </div>
 
           {/* Schedule Summary */}
           <div className="section">
-            <h2>📊 Schedule Summary</h2>
-            <div className="summary-cards">
-              <div className="summary-card">
-                <div className="summary-icon">📅</div>
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333' }}><InsightsIcon fontSize="inherit" /> Schedule Summary</Typography>
+            <motion.div className="summary-cards" variants={staggerContainer} initial="initial" animate="animate">
+              <MotionCard className="summary-card">
+                <div className="summary-icon"><CalendarMonthIcon fontSize="inherit" /></div>
                 <div className="summary-content">
-                  <p className="summary-label">Total Tasks</p>
-                  <p className="summary-value">{scheduleItems.length}</p>
+                  <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500 }}>Total Tasks</Typography>
+                  <Typography variant="h5" component="p" sx={{ margin: '4px 0 0 0', fontWeight: 700, color: '#2d8659' }}>{scheduleItems.length}</Typography>
                 </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon">🚀</div>
+              </MotionCard>
+              <MotionCard className="summary-card">
+                <div className="summary-icon"><RocketLaunchIcon fontSize="inherit" /></div>
                 <div className="summary-content">
-                  <p className="summary-label">Pending</p>
-                  <p className="summary-value">{upcomingTasks.length}</p>
+                  <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500 }}>Pending</Typography>
+                  <Typography variant="h5" component="p" sx={{ margin: '4px 0 0 0', fontWeight: 700, color: '#2d8659' }}>{upcomingTasks.length}</Typography>
                 </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon">✅</div>
+              </MotionCard>
+              <MotionCard className="summary-card">
+                <div className="summary-icon"><CheckCircleIcon fontSize="inherit" /></div>
                 <div className="summary-content">
-                  <p className="summary-label">Completed</p>
-                  <p className="summary-value">{completedTasks.length}</p>
+                  <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500 }}>Completed</Typography>
+                  <Typography variant="h5" component="p" sx={{ margin: '4px 0 0 0', fontWeight: 700, color: '#2d8659' }}>{completedTasks.length}</Typography>
                 </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon">⚠️</div>
+              </MotionCard>
+              <MotionCard className="summary-card">
+                <div className="summary-icon"><WarningIcon fontSize="inherit" /></div>
                 <div className="summary-content">
-                  <p className="summary-label">High Priority</p>
-                  <p className="summary-value">{highPriorityCount}</p>
+                  <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500 }}>High Priority</Typography>
+                  <Typography variant="h5" component="p" sx={{ margin: '4px 0 0 0', fontWeight: 700, color: '#2d8659' }}>{highPriorityCount}</Typography>
                 </div>
-              </div>
-            </div>
+              </MotionCard>
+            </motion.div>
           </div>
 
           {/* Working Scenario */}
           <div className="section">
-            <h2>🎯 How to Use Schedule</h2>
-            <div className="scenario-container">
+            <Typography variant="h5" component="h2" sx={{ margin: '0 0 24px 0', fontWeight: 700, color: '#333' }}><TrackChangesIcon fontSize="inherit" /> How to Use Schedule</Typography>
+            <motion.div className="scenario-container" variants={staggerContainer} initial="initial" animate="animate">
               {[
                 { n: 1, title: 'Review Upcoming Tasks', desc: 'Check the Upcoming Tasks list daily. High priority tasks should be completed first.' },
                 { n: 2, title: 'Prioritize by Urgency', desc: 'Red (High) priority tasks need immediate attention. Yellow (Medium) tasks should be done within a few days.' },
                 { n: 3, title: 'Complete and Track', desc: 'Check the checkbox when you complete a task. It moves to the Completed section.' },
                 { n: 4, title: 'Monitor Progress', desc: 'Use the Schedule Summary to stay on top of pending tasks.' },
               ].map(step => (
-                <div key={step.n} className="scenario-step">
+                <MotionCard key={step.n} className="scenario-step">
                   <div className="scenario-number">{step.n}</div>
                   <div className="scenario-content">
-                    <h4>{step.title}</h4>
-                    <p>{step.desc}</p>
+                    <Typography variant="subtitle2" component="h4" sx={{ margin: '0 0 8px 0', fontWeight: 600, color: '#333' }}>{step.title}</Typography>
+                    <Typography variant="body2" sx={{ margin: 0, color: '#666', lineHeight: 1.5 }}>{step.desc}</Typography>
                   </div>
-                </div>
+                </MotionCard>
               ))}
-            </div>
+            </motion.div>
           </div>
 
           {/* Add/Edit Modal */}
           {showModal && (
-            <div className="modal-overlay" onClick={() => setShowModal(false)}>
-              <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <motion.div className="modal-overlay" onClick={() => setShowModal(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+              <motion.div className="modal-card" onClick={e => e.stopPropagation()} initial={{ opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}>
                 <div className="modal-header">
-                  <h2>{editingTask ? '📝 Edit Task' : '➕ Add Task'}</h2>
-                  <button className="modal-close" onClick={() => setShowModal(false)} title="Close">✕</button>
+                  <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#333', margin: 0 }}>{editingTask ? <><EditIcon fontSize="inherit" /> Edit Task</> : <><AddCircleIcon fontSize="inherit" /> Add Task</>}</Typography>
+                  <button className="modal-close" onClick={() => setShowModal(false)} title="Close"><CloseIcon fontSize="inherit" /></button>
                 </div>
                 <div className="modal-body">
                   {actionError && <p className="error-text" style={{ marginBottom: 12 }}>{actionError}</p>}
@@ -375,8 +399,8 @@ export const Schedule = () => {
                     {editingTask ? 'Save Changes' : 'Add Task'}
                   </button>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
         </>
       )}
@@ -415,6 +439,9 @@ export const Schedule = () => {
           border: none;
           cursor: pointer;
           transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
         .schedule-right button:hover {
           transform: scale(1.1);
