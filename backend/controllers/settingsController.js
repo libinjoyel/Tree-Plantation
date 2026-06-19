@@ -267,6 +267,42 @@ const settingsController = {
         error: 'Failed to update user info'
       });
     }
+  },
+
+  deleteAccount: async (req, res) => {
+    try {
+      const user = await User.findById(req.userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      if (user.deletedAt) {
+        return res.status(400).json({
+          success: false,
+          error: 'Account is already deleted'
+        });
+      }
+
+      // Soft delete — mark user as deleted but keep all data
+      await User.findByIdAndUpdate(req.userId, { deletedAt: new Date() });
+
+      logger.info(`Account soft-deleted for user: ${req.userId}`);
+
+      res.json({
+        success: true,
+        message: 'Account deleted successfully'
+      });
+    } catch (error) {
+      logger.error('Delete account error', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete account'
+      });
+    }
   }
 };
 

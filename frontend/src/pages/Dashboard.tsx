@@ -20,7 +20,6 @@ import YardIcon from '@mui/icons-material/Yard';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CloseIcon from '@mui/icons-material/Close';
-import GrassIcon from '@mui/icons-material/Grass';
 import WbTwilightIcon from '@mui/icons-material/WbTwilight';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -90,8 +89,6 @@ export const Dashboard = () => {
   const [newPlantData, setNewPlantData] = useState({ name: '', species: '', wateringSchedule: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Plant[]>([]);
-  const [notifications, setNotifications] = useState<string[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [actionError, setActionError] = useState('');
 
   // Load plants from backend on mount
@@ -104,9 +101,6 @@ export const Dashboard = () => {
     const response = await plantService.getAllPlants();
     if (response.success && response.data?.plants) {
       setPlants(response.data.plants);
-      // Build notifications for overdue plants
-      const overdue = response.data.plants.filter(p => calculateHealth(p.lastWatered, p.wateringSchedule) <= 0);
-      setNotifications(overdue.map(p => `${p.name} needs water!`));
     }
     setPlantsLoading(false);
   };
@@ -328,38 +322,6 @@ export const Dashboard = () => {
           </MotionCard>
         </motion.div>
       </section>
-
-      {/* Notifications panel */}
-      {showNotifications && (
-        <div className="notifications-panel">
-          <div className="notifications-header">
-            <Typography variant="subtitle1" component="h4" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><NotificationsIcon fontSize="inherit" /> Notifications</Typography>
-            <button onClick={() => setShowNotifications(false)}><CloseIcon fontSize="inherit" /></button>
-          </div>
-          {notifications.length > 0 ? (
-            notifications.map((n, i) => (
-              <div key={i} className="notification-item"><WarningIcon fontSize="inherit" /> {n}</div>
-            ))
-          ) : (
-            <p className="no-notifications">All plants are doing great! <GrassIcon fontSize="inherit" /></p>
-          )}
-        </div>
-      )}
-
-      {/* Notifications toggle button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <button
-          className="icon-btn"
-          title={`Notifications (${notifications.length})`}
-          onClick={() => setShowNotifications(s => !s)}
-          style={{ position: 'relative' }}
-        >
-          <NotificationsIcon fontSize="inherit" />
-          {notifications.length > 0 && (
-            <span className="notification-badge">{notifications.length}</span>
-          )}
-        </button>
-      </div>
 
       {/* Plants Section */}
       <section className="plants-section">

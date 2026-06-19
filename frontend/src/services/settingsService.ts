@@ -36,6 +36,14 @@ class SettingsService {
     }
   }
 
+  async deleteAccount(): Promise<ApiResponse<null>> {
+    try {
+      return await apiConfig.delete('/settings/account');
+    } catch {
+      return { success: false, error: 'Failed to delete account' };
+    }
+  }
+
   async changePassword(data: {
     currentPassword: string;
     newPassword: string;

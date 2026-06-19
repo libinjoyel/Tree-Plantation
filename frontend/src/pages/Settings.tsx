@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AppSettings, UserInfo } from '../types';
 import settingsService from '../services/settingsService';
 import AppLayout from '../components/AppLayout';
@@ -18,8 +19,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import toast from 'react-hot-toast';
 
 export const Settings = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // User info state
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -173,6 +176,29 @@ export const Settings = () => {
       }
     } catch (err: any) {
       toast.error(`Error: ${err.message || 'Failed to change password'}`);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await settingsService.deleteAccount();
+      if (res.success) {
+        toast.success('Account deleted successfully.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      } else {
+        toast.error(`Failed to delete account: ${res.error}`);
+        setDeleting(false);
+      }
+    } catch (err: any) {
+      toast.error(`Error: ${err.message || 'Failed to delete account'}`);
+      setDeleting(false);
     }
   };
 
@@ -411,13 +437,10 @@ export const Settings = () => {
             <MotionCard className="settings-card danger">
               <button
                 className="btn danger"
-                onClick={() => {
-                  if (window.confirm('Are you sure? This action cannot be undone.')) {
-                    toast.success('Account deletion request submitted. We will process it within 30 days.');
-                  }
-                }}
+                onClick={handleDeleteAccount}
+                disabled={deleting}
               >
-                <DeleteIcon fontSize="inherit" /> Delete Account
+                <DeleteIcon fontSize="inherit" /> {deleting ? 'Deleting...' : 'Delete Account'}
               </button>
             </MotionCard>
           </div>

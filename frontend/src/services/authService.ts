@@ -76,6 +76,21 @@ class AuthService {
       return { success: false, error: 'Failed to reset password' };
     }
   }
+
+  async restoreAccount(email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> {
+    try {
+      const response = await apiConfig.post('/auth/restore', { email, password });
+      if (response.success && response.data?.token) {
+        localStorage.setItem('token', response.data.token);
+        if (response.data?.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+      }
+      return response;
+    } catch {
+      return { success: false, error: 'Failed to restore account' };
+    }
+  }
 }
 
 export default new AuthService();

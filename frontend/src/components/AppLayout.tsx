@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { User } from '../types';
 import authService from '../services/authService';
+import plantService from '../services/plantService';
+import { calculateHealth } from '../utils/helpers';
 import Typography from '@mui/material/Typography';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -12,6 +14,10 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import CloseIcon from '@mui/icons-material/Close';
+import WarningIcon from '@mui/icons-material/Warning';
+import GrassIcon from '@mui/icons-material/Grass';
 import { navItem, staggerContainer } from '../utils/animations';
 
 interface MenuItem {
@@ -41,21 +47,39 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const user: User | null = authService.getStoredUser();
   const initials = user ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+  const [notifications, setNotifications] = useState<string[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      const response = await plantService.getAllPlants();
+      if (response.success && response.data?.plants) {
+        const overdue = response.data.plants.filter(p => calculateHealth(p.lastWatered, p.wateringSchedule) <= 0);
+        setNotifications(overdue.map(p => `${p.name} needs water!`));
+      }
+    };
+    loadNotifications();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
     };
-    if (profileOpen) {
+    if (profileOpen || showNotifications) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [profileOpen]);
+  }, [profileOpen, showNotifications]);
 
   const handleMenuClick = (href: string) => {
     if (href && href !== '#') {
@@ -119,6 +143,34 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
                 <Typography variant="h5" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>{pageTitle}</Typography>
               </div>
               <div className="navbar-actions" ref={profileRef}>
+                <div style={{ position: 'relative' }} ref={notifRef}>
+                  <button
+                    className="icon-btn"
+                    title={`Notifications (${notifications.length})`}
+                    onClick={() => setShowNotifications(s => !s)}
+                    style={{ position: 'relative' }}
+                  >
+                    <NotificationsIcon fontSize="inherit" />
+                    {notifications.length > 0 && (
+                      <span className="notification-badge">{notifications.length}</span>
+                    )}
+                  </button>
+                  {showNotifications && (
+                    <div className="notifications-panel">
+                      <div className="notifications-header">
+                        <Typography variant="subtitle1" component="h4" sx={{ fontWeight: 700, color: '#333', margin: 0 }}><NotificationsIcon fontSize="inherit" /> Notifications</Typography>
+                        <button onClick={() => setShowNotifications(false)}><CloseIcon fontSize="inherit" /></button>
+                      </div>
+                      {notifications.length > 0 ? (
+                        notifications.map((n, i) => (
+                          <div key={i} className="notification-item"><WarningIcon fontSize="inherit" /> {n}</div>
+                        ))
+                      ) : (
+                        <p className="no-notifications">All plants are doing great! <GrassIcon fontSize="inherit" /></p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} title={user?.name || 'User'}>
                   <div className="profile-avatar">{initials}</div>
                 </div>
@@ -168,6 +220,118 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
       </div>
 
       <style>{`
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 20px;
+  }
+  .icon-btn:hover {
+    background: #f0f2f5;
+    color: #2d8659;
+  }
+  body.dark-mode .icon-btn {
+    color: #aaa;
+  }
+  body.dark-mode .icon-btn:hover {
+    background: #2a2a2a;
+    color: #2d8659;
+  }
+  .notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #ff6b6b;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+  }
+  .notifications-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 100;
+    width: 320px;
+    padding: 16px;
+    animation: profileFadeIn 0.2s ease;
+  }
+  .notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .notifications-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .notifications-header button:hover {
+    background: #f5f5f5;
+    color: #333;
+  }
+  .notification-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff8f0;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .notification-item:last-child {
+    margin-bottom: 0;
+  }
+  .no-notifications {
+    text-align: center;
+    color: #999;
+    padding: 24px;
+    font-size: 14px;
+    margin: 0;
+  }
+  body.dark-mode .notifications-panel {
+    background: #242424;
+  }
+  body.dark-mode .notifications-header {
+    border-bottom-color: #333;
+  }
+  body.dark-mode .notification-item {
+    background: rgba(255, 107, 107, 0.1);
+    color: #e0e0e0;
+  }
+  body.dark-mode .no-notifications {
+    color: #888;
+  }
   .navbar-actions {
     display: flex;
     align-items: center;

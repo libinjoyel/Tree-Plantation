@@ -28,4 +28,7 @@ router.get('/user-info', settingsController.getUserInfo);
 // PUT /api/settings/user-info
 router.put('/user-info', settingsController.updateUserInfo);
 
+// DELETE /api/settings/account
+router.delete('/account', settingsController.deleteAccount);
+
 module.exports = router;

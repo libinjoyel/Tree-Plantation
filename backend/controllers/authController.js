@@ -73,6 +73,14 @@ const authController = {
         });
       }
 
+      // Check if account was deleted
+      if (user.deletedAt) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid credentials'
+        });
+      }
+
       // Check password
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
@@ -122,7 +130,7 @@ const authController = {
   getCurrentUser: async (req, res) => {
     try {
       const user = await User.findById(req.userId);
-      if (!user) {
+      if (!user || user.deletedAt) {
         return res.status(404).json({
           success: false,
           error: 'User not found'
@@ -237,6 +245,63 @@ const authController = {
       res.status(500).json({
         success: false,
         error: 'Failed to reset password'
+      });
+    }
+  },
+
+  restoreAccount: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email and password are required'
+        });
+      }
+
+      // Find user including deleted ones
+      const user = await User.findOne({ email }).select('+password');
+
+      // Generic error to prevent email enumeration
+      if (!user || !user.deletedAt) {
+        return res.status(400).json({
+          success: false,
+          error: 'Unable to restore account. Please check your credentials.'
+        });
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return res.status(400).json({
+          success: false,
+          error: 'Unable to restore account. Please check your credentials.'
+        });
+      }
+
+      // Restore the account using updateOne to avoid pre-save hooks and validation
+      await User.updateOne({ _id: user._id }, { $set: { deletedAt: null } });
+
+      // Generate token so the user is logged in immediately
+      const token = generateToken(user._id);
+
+      logger.info(`Account restored for user: ${email}`);
+
+      // Fetch fresh user data for response (without sensitive fields)
+      const restoredUser = await User.findById(user._id);
+
+      res.json({
+        success: true,
+        data: {
+          user: restoredUser.toJSON(),
+          token
+        }
+      });
+    } catch (error) {
+      logger.error('Restore account error', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to restore account'
       });
     }
   }

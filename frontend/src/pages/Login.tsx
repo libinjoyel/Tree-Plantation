@@ -54,6 +54,8 @@ export const Login = () => {
     }
   };
 
+  const [restoring, setRestoring] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -81,6 +83,29 @@ export const Login = () => {
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!credentials.email || !credentials.password) {
+      setError('Enter your email and password to restore your account.');
+      return;
+    }
+
+    setRestoring(true);
+    setError('');
+
+    try {
+      const response = await authService.restoreAccount(credentials.email, credentials.password);
+      if (response.success) {
+        navigate('/dashboard');
+      } else {
+        setError(response.error || 'Unable to restore account.');
+      }
+    } catch {
+      setError('Failed to restore account.');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -171,6 +196,17 @@ export const Login = () => {
               'Login'
             )}
           </button>
+
+          <div className="restore-section">
+            <button
+              type="button"
+              className="restore-link"
+              onClick={handleRestore}
+              disabled={restoring}
+            >
+              {restoring ? 'Restoring...' : 'Restore deleted account?'}
+            </button>
+          </div>
         </form>
 
         <div className="auth-footer">
