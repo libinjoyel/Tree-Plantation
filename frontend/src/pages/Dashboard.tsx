@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import type { Plant, WeatherData, WeatherSuggestion } from '../types';
 import { getWeatherForCurrentLocation, getPlantCareSuggestion } from '../services/weatherService';
 import plantService from '../services/plantService';
-import { calculateHealth, getNextWatering } from '../utils/helpers';
+import { calculateHealth, getNextWatering, formatTimeSince } from '../utils/helpers';
 import { useRealtimeTimer } from '../hooks';
 import AppLayout from '../components/AppLayout';
 import MotionCard from '../components/MotionCard';
 import Typography from '@mui/material/Typography';
 import { fadeInUp, staggerContainer } from '../utils/animations';
 import '../styles/Dashboard.css';
+import toast from 'react-hot-toast';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import DeviceThermostatIcon from '@mui/icons-material/DeviceThermostat';
 import AirIcon from '@mui/icons-material/Air';
@@ -23,7 +25,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import WbTwilightIcon from '@mui/icons-material/WbTwilight';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -35,6 +37,16 @@ import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import AddIcon from '@mui/icons-material/Add';
+import HistoryIcon from '@mui/icons-material/History';
+import TimelineIcon from '@mui/icons-material/Timeline';
+
+interface ActivityItem {
+  id: string;
+  type: 'watered' | 'added';
+  message: string;
+  timestamp: Date;
+}
 
 const weatherIconMap: Record<string, React.ReactNode> = {
   WbSunny: <WbSunnyIcon fontSize="inherit" />,
@@ -90,20 +102,26 @@ export const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Plant[]>([]);
   const [actionError, setActionError] = useState('');
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+
+  const navigate = useNavigate();
+
+  const addActivity = (type: ActivityItem['type'], message: string) => {
+    setActivities(prev => [
+      { id: crypto.randomUUID(), type, message, timestamp: new Date() },
+      ...prev,
+    ].slice(0, 10));
+  };
 
   // Load plants from backend on mount
   useEffect(() => {
-    loadPlants();
+    plantService.getAllPlants().then(response => {
+      if (response.success && response.data?.plants) {
+        setPlants(response.data.plants);
+      }
+      setPlantsLoading(false);
+    });
   }, []);
-
-  const loadPlants = async () => {
-    setPlantsLoading(true);
-    const response = await plantService.getAllPlants();
-    if (response.success && response.data?.plants) {
-      setPlants(response.data.plants);
-    }
-    setPlantsLoading(false);
-  };
 
   // Default weather data shown before user fetches real data
   const defaultWeather: WeatherData = {
@@ -144,6 +162,7 @@ export const Dashboard = () => {
       setShowAddPlantModal(false);
       setNewPlantData({ name: '', species: '', wateringSchedule: '' });
       setActionError('');
+      addActivity('added', `Added new plant "${newPlantData.name}"`);
     } else {
       setActionError(response.error || 'Failed to add plant');
     }
@@ -154,6 +173,7 @@ export const Dashboard = () => {
     const response = await plantService.waterPlant(plantId);
     if (response.success && response.data?.plant) {
       setPlants(prev => prev.map(p => p.id === plantId ? response.data!.plant : p));
+      addActivity('watered', `Watered "${plantName}"`);
     }
     setTimeout(() => {
       setWateredPlants(prev => {
@@ -162,7 +182,26 @@ export const Dashboard = () => {
         return next;
       });
     }, 3000);
-    void plantName; // suppress unused warning
+  };
+
+  const handleWaterAll = async () => {
+    const needsWater = plants.filter(p => calculateHealth(p.lastWatered, p.wateringSchedule) <= 0);
+    if (needsWater.length === 0) {
+      toast('All plants are already hydrated!', { icon: '💚' });
+      return;
+    }
+    const promises = needsWater.map(p => plantService.waterPlant(p.id));
+    const results = await Promise.all(promises);
+    results.forEach((r, i) => {
+      if (r.success && r.data?.plant) {
+        const idx = plants.findIndex(p => p.id === needsWater[i].id);
+        if (idx !== -1) {
+          setPlants(prev => prev.map(p => p.id === needsWater[i].id ? r.data!.plant : p));
+          addActivity('watered', `Watered "${needsWater[i].name}"`);
+        }
+      }
+    });
+    toast.success(`Watered ${needsWater.length} plant${needsWater.length !== 1 ? 's' : ''}!`);
   };
 
   const handleEditPlant = (plantId: string) => {
@@ -238,90 +277,154 @@ export const Dashboard = () => {
 
   return (
     <AppLayout activeMenu="dashboard" pageTitle="Dashboard">
-      {/* Weather Section */}
-      <section className="weather-section">
-        <MotionCard className="weather-card">
-          <div className="weather-header">
-            <div className="weather-title">
-              <Typography variant="h6" component="h3" sx={{ margin: '0 0 4px 0', fontWeight: 600 }}>Today's Weather</Typography>
-              <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 500 }}>{currentWeather.city}</Typography>
-            </div>
-            <button
-              className={`location-btn ${weatherLoading ? 'loading' : ''}`}
-              onClick={handleGetWeather}
-              disabled={weatherLoading}
-              title="Use current location"
-            >
-              {weatherLoading ? <HourglassEmptyIcon fontSize="inherit" /> : <MyLocationIcon fontSize="inherit" />}
-            </button>
-          </div>
+      {/* Quick Actions */}
+      <section className="quick-actions">
+        <button className="quick-action-btn" onClick={handleAddPlantClick}>
+          <span className="quick-action-icon green"><AddIcon fontSize="inherit" /></span>
+          <span className="quick-action-label">Add Plant</span>
+        </button>
+        <button className="quick-action-btn" onClick={handleWaterAll}>
+          <span className="quick-action-icon blue"><WaterDropIcon fontSize="inherit" /></span>
+          <span className="quick-action-label">Water All</span>
+        </button>
+        <button className="quick-action-btn" onClick={() => navigate('/schedule')}>
+          <span className="quick-action-icon purple"><CalendarMonthIcon fontSize="inherit" /></span>
+          <span className="quick-action-label">Create Schedule</span>
+        </button>
+        <button className="quick-action-btn" onClick={() => navigate('/analytics')}>
+          <span className="quick-action-icon orange"><TimelineIcon fontSize="inherit" /></span>
+          <span className="quick-action-label">View Analytics</span>
+        </button>
+      </section>
 
-          {weatherError && (
-            <div className="weather-error">
-              <span className="error-icon"><WarningIcon fontSize="inherit" /></span>
-              <p>{weatherError}</p>
+      {/* Weather + Stats Row */}
+      <div className="dashboard-top-row">
+        <div className="weather-column">
+          <MotionCard className="weather-compact">
+            <div className="weather-compact-header">
+              <div>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
+                  Today's Weather
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                  {currentWeather.city}
+                </Typography>
+              </div>
+              <button
+                className={`location-btn ${weatherLoading ? 'loading' : ''}`}
+                onClick={handleGetWeather}
+                disabled={weatherLoading}
+                title="Use current location"
+              >
+                {weatherLoading ? <HourglassEmptyIcon fontSize="small" /> : <MyLocationIcon fontSize="small" />}
+              </button>
             </div>
-          )}
 
-          <div className="weather-main">
-            <div className="temperature">
-              <span className="weather-emoji">{renderWeatherIcon(currentWeather.weatherIcon)}</span>
-              <div className="temp-info">
-                <span className="temp-value">{currentWeather.temperature}°C</span>
-                <p className="temp-condition">{currentWeather.condition}</p>
-                <p className="temp-feels">Feels like {currentWeather.feelsLike}°C</p>
+            <div className="weather-compact-body">
+              <div className="weather-compact-main">
+                <span className="weather-compact-icon">{renderWeatherIcon(currentWeather.weatherIcon)}</span>
+                <div>
+                  <span className="weather-compact-temp">{currentWeather.temperature}°C</span>
+                  <span className="weather-compact-condition">{currentWeather.condition}</span>
+                  <span className="weather-compact-feels">Feels like {currentWeather.feelsLike}°C</span>
+                </div>
               </div>
             </div>
+
+            {weatherError && (
+              <div className="weather-compact-error">
+                <WarningIcon fontSize="inherit" /> {weatherError}
+              </div>
+            )}
+
+            <div className="weather-details-grid">
+              <div className="weather-detail-item">
+                <WaterDropIcon fontSize="inherit" />
+                <span className="weather-detail-label">Humidity</span>
+                <span className="weather-detail-value">{currentWeather.humidity}%</span>
+              </div>
+              <div className="weather-detail-item">
+                <DeviceThermostatIcon fontSize="inherit" />
+                <span className="weather-detail-label">UV Index</span>
+                <span className="weather-detail-value">{currentWeather.uvIndex}</span>
+              </div>
+              <div className="weather-detail-item">
+                <AirIcon fontSize="inherit" />
+                <span className="weather-detail-label">Wind</span>
+                <span className="weather-detail-value">{currentWeather.windSpeed} km/h</span>
+              </div>
+            </div>
+          </MotionCard>
+        </div>
+
+        <div className="stats-column">
+          <div className={`weather-suggestion-outside${!weatherSuggestion ? ' empty' : ''}`}>
+            {weatherSuggestion ? (
+              <>
+                <span className="suggestion-outside-icon">{renderSuggestionIcon(weatherSuggestion.icon)}</span>
+                <div className="suggestion-outside-content">
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: '#2d8659', lineHeight: 1, letterSpacing: 1, fontSize: 11 }}>
+                    {weatherSuggestion.title}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#666', lineHeight: 1.3, fontSize: 12 }}>
+                    {weatherSuggestion.message}
+                  </Typography>
+                </div>
+              </>
+            ) : <span className="suggestion-placeholder" />}
           </div>
+          <div className="stats-compact">
+          <motion.div className="stat-card enhanced" variants={fadeInUp}>
+            <div className="stat-icon-box green"><YardIcon fontSize="inherit" /></div>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#2d8659', margin: '8px 0 4px' }}>{plants.length}</Typography>
+            <Typography variant="caption" sx={{ color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Plants</Typography>
+          </motion.div>
+          <motion.div className="stat-card enhanced" variants={fadeInUp}>
+            <div className="stat-icon-box orange"><WaterDropIcon fontSize="inherit" /></div>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#2d8659', margin: '8px 0 4px' }}>{needWaterCount}</Typography>
+            <Typography variant="caption" sx={{ color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Need Water</Typography>
+          </motion.div>
+          <motion.div className="stat-card enhanced" variants={fadeInUp}>
+            <div className="stat-icon-box teal"><CheckCircleIcon fontSize="inherit" /></div>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#2d8659', margin: '8px 0 4px' }}>{healthyCount}</Typography>
+            <Typography variant="caption" sx={{ color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Healthy</Typography>
+          </motion.div>
+        </div>
+      </div>
+      </div>
 
-          <div className="weather-details">
-            <div className="weather-stat">
-              <span className="stat-icon"><WaterDropIcon fontSize="inherit" /></span>
-              <span className="stat-label">Humidity</span>
-              <span className="stat-value">{currentWeather.humidity}%</span>
-            </div>
-            <div className="weather-stat">
-              <span className="stat-icon"><DeviceThermostatIcon fontSize="inherit" /></span>
-              <span className="stat-label">UV Index</span>
-              <span className="stat-value">{currentWeather.uvIndex}</span>
-            </div>
-            <div className="weather-stat">
-              <span className="stat-icon"><AirIcon fontSize="inherit" /></span>
-              <span className="stat-label">Wind</span>
-              <span className="stat-value">{currentWeather.windSpeed} km/h</span>
-            </div>
+      {/* Recent Activities */}
+      {activities.length > 0 && (
+        <section className="recent-activities">
+          <div className="section-header">
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <HistoryIcon fontSize="inherit" /> Recent Activities
+            </Typography>
           </div>
-        </MotionCard>
-
-        {weatherSuggestion && (
-          <MotionCard className="care-suggestion-card">
-            <div className="suggestion-header">
-              <span className="suggestion-icon">{renderSuggestionIcon(weatherSuggestion.icon)}</span>
-              <Typography variant="overline" component="h4" sx={{ fontWeight: 700, color: '#2d8659', margin: 0, letterSpacing: 1 }}>{weatherSuggestion.title}</Typography>
-            </div>
-            <Typography variant="caption" sx={{ color: '#666', margin: 0, lineHeight: 1.4, paddingLeft: '30px' }}>{weatherSuggestion.message}</Typography>
-          </MotionCard>
-        )}
-
-        {/* Quick Stats — computed from real plant data */}
-        <motion.div className="stats-cards" variants={staggerContainer} initial="initial" animate="animate">
-          <MotionCard className="stat-card">
-            <div className="stat-icon-box"><YardIcon fontSize="inherit" /></div>
-            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{plants.length}</Typography>
-            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Plants</Typography>
-          </MotionCard>
-          <MotionCard className="stat-card">
-            <div className="stat-icon-box"><WaterDropIcon fontSize="inherit" /></div>
-            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{needWaterCount}</Typography>
-            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Need Water</Typography>
-          </MotionCard>
-          <MotionCard className="stat-card">
-            <div className="stat-icon-box"><CheckCircleIcon fontSize="inherit" /></div>
-            <Typography variant="h4" component="p" sx={{ margin: '0 0 8px 0', fontWeight: 700, color: '#2d8659' }}>{healthyCount}</Typography>
-            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Healthy</Typography>
-          </MotionCard>
-        </motion.div>
-      </section>
+          <div className="activities-list">
+            <AnimatePresence initial={false}>
+              {activities.slice(0, 5).map((activity) => (
+                <motion.div
+                  key={activity.id}
+                  className="activity-item"
+                  initial={{ opacity: 0, x: -20, height: 0 }}
+                  animate={{ opacity: 1, x: 0, height: 'auto' }}
+                  exit={{ opacity: 0, x: 20, height: 0 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  <span className={`activity-icon ${activity.type}`}>
+                    {activity.type === 'watered' ? <WaterDropIcon fontSize="inherit" /> : <AddIcon fontSize="inherit" />}
+                  </span>
+                  <div className="activity-content">
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', margin: 0 }}>{activity.message}</Typography>
+                    <Typography variant="caption" sx={{ color: '#999', margin: 0 }}>{formatTimeSince(activity.timestamp)}</Typography>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </section>
+      )}
 
       {/* Plants Section */}
       <section className="plants-section">
@@ -510,11 +613,14 @@ const DashboardPlantCard = ({
   const needsWater = health <= 0;
   const nextWatering = getNextWatering(plant.lastWatered, plant.wateringSchedule);
 
+  const healthLevel = health >= 75 ? 'high' : health >= 50 ? 'medium' : 'low';
+  const healthTextClass = health >= 75 ? 'high-text' : health >= 50 ? 'medium-text' : 'low-text';
+
   return (
     <motion.div
       className={`plant-card ${needsWater ? 'needs-water' : 'healthy'}`}
       variants={fadeInUp}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -6 }}
       transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       style={{ willChange: 'transform' }}
     >
@@ -550,24 +656,21 @@ const DashboardPlantCard = ({
             <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>{nextWatering}</Typography>
           </div>
         </div>
-        <div className="detail-item">
-          <span className="detail-icon"><FavoriteIcon fontSize="inherit" /></span>
-          <div className="detail-content">
-            <Typography variant="caption" sx={{ color: '#666', margin: 0, fontWeight: 500, display: 'block' }}>Health</Typography>
-            <Typography variant="body2" sx={{ color: '#333', margin: 0, fontWeight: 600 }}>
-              <span style={{
-                display: 'inline-block',
-                width: `${Math.max(health, 5)}%`,
-                minWidth: 4,
-                height: 8,
-                backgroundColor: health >= 75 ? '#2d8659' : health >= 50 ? '#ffa500' : '#ff6b6b',
-                borderRadius: 4,
-                marginRight: 6,
-                verticalAlign: 'middle',
-              }}></span>
-              {health}%
-            </Typography>
-          </div>
+      </div>
+
+      {/* Attractive Health Progress Bar */}
+      <div className="health-bar-wrapper">
+        <div className="health-bar-track">
+          <motion.div
+            className={`health-bar-fill ${healthLevel}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.max(health, 2)}%` }}
+            transition={{ duration: 1, ease: [0.4, 0, 0.2, 1] }}
+          />
+        </div>
+        <div className="health-bar-label">
+          <span>Health</span>
+          <span className={healthTextClass}>{health}%</span>
         </div>
       </div>
 
