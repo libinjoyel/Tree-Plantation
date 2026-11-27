@@ -47,7 +47,7 @@ export const ForgotPassword = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="logo"><SpaIcon sx={{ fontSize: 40 }} /></div>
-          <Typography variant="h4" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>PlantCare AI</Typography>
+          <Typography variant="h4" component="h1" sx={{ margin: 0, fontWeight: 700, color: '#333' }}>PlantCare</Typography>
           <Typography variant="body2" sx={{ color: '#666', margin: '8px 0 0 0' }}>Reset your password</Typography>
         </div>
 

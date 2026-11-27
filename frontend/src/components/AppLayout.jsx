@@ -106,7 +106,7 @@ export const AppLayout = ({ activeMenu, pageTitle, children }) => {
         <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <div className="sidebar-header">
             <motion.div className="logo" whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}><SpaIcon sx={{ fontSize: 32 }} /></motion.div>
-            {sidebarOpen && <Typography variant="h6" component="h2" sx={{ margin: 0, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', flex: 1 }}>PlantCare AI</Typography>}
+            {sidebarOpen && <Typography variant="h6" component="h2" sx={{ margin: 0, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', flex: 1 }}>PlantCare</Typography>}
             <button
               className="sidebar-close-btn"
               onClick={() => setSidebarOpen(false)}

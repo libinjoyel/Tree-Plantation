@@ -73,7 +73,7 @@ export const Register = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1>PlantCare AI</h1>
+        <h1>PlantCare</h1>
         <h2>Create Account</h2>
 
         {error && <div className="error-message">{error}</div>}
