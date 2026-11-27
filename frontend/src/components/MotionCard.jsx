@@ -1,13 +1,7 @@
 import { motion } from 'framer-motion';
-import type { HTMLMotionProps } from 'framer-motion';
 import { fadeInUp } from '../utils/animations';
 
-interface MotionCardProps extends HTMLMotionProps<'div'> {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const MotionCard = ({ children, className, ...props }: MotionCardProps) => (
+export const MotionCard = ({ children, className, ...props }) => (
   <motion.div
     variants={fadeInUp}
     initial="initial"

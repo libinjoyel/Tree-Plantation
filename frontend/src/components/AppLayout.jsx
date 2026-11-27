@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { User } from '../types';
 import authService from '../services/authService';
 import plantService from '../services/plantService';
 import { calculateHealth } from '../utils/helpers';
@@ -20,20 +19,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import GrassIcon from '@mui/icons-material/Grass';
 import { navItem, staggerContainer } from '../utils/animations';
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  href: string;
-}
-
-interface AppLayoutProps {
-  activeMenu: string;
-  pageTitle: string;
-  children: React.ReactNode;
-}
-
-const menuItems: MenuItem[] = [
+const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="inherit" />, href: '/dashboard' },
   { id: 'plants', label: 'My Plants', icon: <SpaIcon fontSize="inherit" />, href: '/my-plants' },
   { id: 'schedule', label: 'Schedule', icon: <CalendarMonthIcon fontSize="inherit" />, href: '/schedule' },
@@ -42,18 +28,27 @@ const menuItems: MenuItem[] = [
   { id: 'settings', label: 'Settings', icon: <SettingsIcon fontSize="inherit" />, href: '/settings' },
 ];
 
-export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) => {
+export const AppLayout = ({ activeMenu, pageTitle, children }) => {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth > 768 : true
+  );
   const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef(null);
+  const notifRef = useRef(null);
 
-  const user: User | null = authService.getStoredUser();
+  const user = authService.getStoredUser();
   const initials = user ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
 
-  const [notifications, setNotifications] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handleChange = (e) => setSidebarOpen(!e.matches);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -67,11 +62,11 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotifications(false);
       }
     };
@@ -81,9 +76,12 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileOpen, showNotifications]);
 
-  const handleMenuClick = (href: string) => {
+  const handleMenuClick = (href) => {
     if (href && href !== '#') {
       navigate(href);
+    }
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarOpen(false);
     }
   };
 
@@ -96,11 +94,26 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
   return (
     <>
       <div className="dashboard-wrapper">
+        {sidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Sidebar */}
         <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <div className="sidebar-header">
             <motion.div className="logo" whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}><SpaIcon sx={{ fontSize: 32 }} /></motion.div>
-            {sidebarOpen && <Typography variant="h6" component="h2" sx={{ margin: 0, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>PlantCare AI</Typography>}
+            {sidebarOpen && <Typography variant="h6" component="h2" sx={{ margin: 0, fontWeight: 700, color: 'white', whiteSpace: 'nowrap', flex: 1 }}>PlantCare AI</Typography>}
+            <button
+              className="sidebar-close-btn"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <CloseIcon fontSize="inherit" />
+            </button>
           </div>
 
           <motion.nav className="sidebar-nav" variants={staggerContainer} initial="initial" animate="animate">
@@ -537,6 +550,47 @@ export const AppLayout = ({ activeMenu, pageTitle, children }: AppLayoutProps) =
   }
   body.dark-mode .profile-card-logout:hover {
     background: #3c1a1a;
+  }
+  .sidebar-backdrop {
+    display: none;
+  }
+  .sidebar-close-btn {
+    display: none;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    font-size: 20px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  @media (max-width: 768px) {
+    .sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 150;
+      backdrop-filter: blur(2px);
+    }
+    .sidebar-close-btn {
+      display: inline-flex;
+    }
+  }
+  @media (max-width: 480px) {
+    .notifications-panel {
+      width: min(320px, calc(100vw - 24px));
+      right: -46px;
+    }
+    .profile-card {
+      width: min(280px, calc(100vw - 24px));
+    }
   }
 `}</style>
     </>

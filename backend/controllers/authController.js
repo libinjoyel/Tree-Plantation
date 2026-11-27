@@ -12,10 +12,10 @@ const generateToken = (userId) => {
 const authController = {
   register: async (req, res) => {
     try {
-      const { name, email, password} = req.body;
+      const { name, email, password } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return res.status(400).json({
           success: false,
@@ -24,30 +24,20 @@ const authController = {
       }
 
       // Create new user
-      const user = new User({ name, email, password});
-      await user.save();
+      const user = await User.create({ name, email, password });
 
       // Create default settings for user
-      await Settings.create({
-        userId: user._id,
-        notificationsEnabled: true,
-        emailAlerts: true,
-        wateringReminders: true,
-        weeklyReports: false,
-        darkMode: false,
-        language: 'English',
-        timezone: 'UTC'
-      });
+      await Settings.createDefault(user.id);
 
       // Generate token
-      const token = generateToken(user._id);
+      const token = generateToken(user.id);
 
       logger.info(`User registered: ${email}`);
 
       res.status(201).json({
         success: true,
         data: {
-          user: user.toJSON(),
+          user: User.format(user),
           token
         }
       });
@@ -65,7 +55,7 @@ const authController = {
       const { email, password } = req.body;
 
       // Find user
-      const user = await User.findOne({ email }).select('+password');
+      const user = await User.findByEmail(email, { includePassword: true });
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -74,7 +64,7 @@ const authController = {
       }
 
       // Check if account was deleted
-      if (user.deletedAt) {
+      if (user.deleted_at) {
         return res.status(401).json({
           success: false,
           error: 'Invalid credentials'
@@ -82,7 +72,7 @@ const authController = {
       }
 
       // Check password
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await User.comparePassword(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
@@ -91,14 +81,14 @@ const authController = {
       }
 
       // Generate token
-      const token = generateToken(user._id);
+      const token = generateToken(user.id);
 
       logger.info(`User logged in: ${email}`);
 
       res.json({
         success: true,
         data: {
-          user: user.toJSON(),
+          user: User.format(user),
           token
         }
       });
@@ -130,7 +120,7 @@ const authController = {
   getCurrentUser: async (req, res) => {
     try {
       const user = await User.findById(req.userId);
-      if (!user || user.deletedAt) {
+      if (!user || user.deleted_at) {
         return res.status(404).json({
           success: false,
           error: 'User not found'
@@ -139,7 +129,7 @@ const authController = {
 
       res.json({
         success: true,
-        data: { user: user.toJSON() }
+        data: { user: User.format(user) }
       });
     } catch (error) {
       logger.error('Get current user error', error.message);
@@ -161,7 +151,7 @@ const authController = {
         });
       }
 
-      const user = await User.findOne({ email });
+      const user = await User.findByEmail(email);
       // Always return success to prevent email enumeration
       if (!user) {
         return res.json({
@@ -172,23 +162,14 @@ const authController = {
 
       // Generate reset token
       const resetToken = crypto.randomBytes(32).toString('hex');
-      await User.updateOne(
-        { email },
-        {
-          $set: {
-            resetToken,
-            resetTokenExpiry: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-          }
-        }
-      );
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await User.setResetToken(email, resetToken, resetTokenExpiry);
 
       logger.info(`Password reset requested for: ${email}`);
 
       res.json({
         success: true,
-        message: 'If an account with that email exists, a reset link has been sent.',
-        // In production, remove this and send via email instead
-        ...(process.env.NODE_ENV !== 'production' && { resetToken })
+        message: 'If an account with that email exists, a reset link has been sent.'
       });
     } catch (error) {
       logger.error('Forgot password error', error.message);
@@ -217,10 +198,7 @@ const authController = {
         });
       }
 
-      const user = await User.findOne({
-        resetToken: token,
-        resetTokenExpiry: { $gt: new Date() }
-      });
+      const user = await User.findByValidResetToken(token);
 
       if (!user) {
         return res.status(400).json({
@@ -229,10 +207,7 @@ const authController = {
         });
       }
 
-      user.password = password;
-      user.resetToken = null;
-      user.resetTokenExpiry = null;
-      await user.save();
+      await User.updatePasswordAndClearReset(user.id, password);
 
       logger.info(`Password reset completed for: ${user.email}`);
 
@@ -261,17 +236,17 @@ const authController = {
       }
 
       // Find user including deleted ones
-      const user = await User.findOne({ email }).select('+password');
+      const user = await User.findByEmail(email, { includePassword: true });
 
       // Generic error to prevent email enumeration
-      if (!user || !user.deletedAt) {
+      if (!user || !user.deleted_at) {
         return res.status(400).json({
           success: false,
           error: 'Unable to restore account. Please check your credentials.'
         });
       }
 
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await User.comparePassword(password, user.password);
       if (!isPasswordValid) {
         return res.status(400).json({
           success: false,
@@ -279,21 +254,17 @@ const authController = {
         });
       }
 
-      // Restore the account using updateOne to avoid pre-save hooks and validation
-      await User.updateOne({ _id: user._id }, { $set: { deletedAt: null } });
+      const restoredUser = await User.restore(user.id);
 
       // Generate token so the user is logged in immediately
-      const token = generateToken(user._id);
+      const token = generateToken(user.id);
 
       logger.info(`Account restored for user: ${email}`);
-
-      // Fetch fresh user data for response (without sensitive fields)
-      const restoredUser = await User.findById(user._id);
 
       res.json({
         success: true,
         data: {
-          user: restoredUser.toJSON(),
+          user: User.format(restoredUser),
           token
         }
       });

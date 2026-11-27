@@ -13,7 +13,7 @@ export const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resetToken, setResetToken] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -29,8 +29,8 @@ export const ForgotPassword = () => {
       const response = await authService.forgotPassword(email);
       if (response.success) {
         setSuccess('If an account with that email exists, a reset link has been sent.');
-        if ((response as any).resetToken) {
-          setResetToken((response as any).resetToken);
+        if (response.resetToken) {
+          setResetToken(response.resetToken);
         }
       } else {
         setError(response.error || 'Something went wrong');

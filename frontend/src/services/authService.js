@@ -1,10 +1,9 @@
 // Services to handle authentication API calls
 
-import type { ApiResponse, User, LoginCredentials } from '../types';
 import apiConfig from '../utils/apiConfig';
 
 class AuthService {
-  async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; token: string }>> {
+  async login(credentials) {
     try {
       const response = await apiConfig.post('/auth/login', credentials);
       if (response.success && response.data?.token) {
@@ -14,26 +13,21 @@ class AuthService {
         }
       }
       return response;
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Login failed' };
     }
   }
 
-  async register(data: {
-    email: string;
-    password: string;
-    name: string;
-    confirmPassword: string;
-  }): Promise<ApiResponse<{ user: User; token: string }>> {
+  async register(data) {
     try {
       const response = await apiConfig.post('/auth/register', data);
       return response;
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Registration failed' };
     }
   }
 
-  async logout(): Promise<void> {
+  async logout() {
     try {
       await apiConfig.post('/auth/logout');
     } catch (error) {
@@ -44,24 +38,24 @@ class AuthService {
     }
   }
 
-  async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
+  async getCurrentUser() {
     try {
       return await apiConfig.get('/auth/me');
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch user' };
     }
   }
 
-  getStoredUser(): User | null {
+  getStoredUser() {
     const raw = localStorage.getItem('user');
     return raw ? JSON.parse(raw) : null;
   }
 
-  isAuthenticated(): boolean {
+  isAuthenticated() {
     return !!localStorage.getItem('token');
   }
 
-  async forgotPassword(email: string): Promise<ApiResponse<{ resetToken?: string }>> {
+  async forgotPassword(email) {
     try {
       return await apiConfig.post('/auth/forgot-password', { email });
     } catch {
@@ -69,7 +63,7 @@ class AuthService {
     }
   }
 
-  async resetPassword(token: string, password: string): Promise<ApiResponse<null>> {
+  async resetPassword(token, password) {
     try {
       return await apiConfig.post('/auth/reset-password', { token, password });
     } catch {
@@ -77,7 +71,7 @@ class AuthService {
     }
   }
 
-  async restoreAccount(email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> {
+  async restoreAccount(email, password) {
     try {
       const response = await apiConfig.post('/auth/restore', { email, password });
       if (response.success && response.data?.token) {

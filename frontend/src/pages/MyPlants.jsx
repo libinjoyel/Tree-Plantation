@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { Plant } from '../types';
 import plantService from '../services/plantService';
 import { calculateHealth, getNextWatering } from '../utils/helpers';
 import { useRealtimeTimer } from '../hooks';
@@ -20,29 +19,25 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SpaIcon from '@mui/icons-material/Spa';
 
 export const MyPlants = () => {
-  const [plants, setPlants] = useState<Plant[]>([]);
+  const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddPlantModal, setShowAddPlantModal] = useState(false);
-  const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
+  const [editingPlant, setEditingPlant] = useState(null);
   const [editFormData, setEditFormData] = useState({ name: '', species: '', wateringSchedule: '' });
   const [newPlantData, setNewPlantData] = useState({ name: '', species: '', wateringSchedule: '' });
-  const [wateredPlants, setWateredPlants] = useState<Set<string>>(new Set());
+  const [wateredPlants, setWateredPlants] = useState(new Set());
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
-    loadPlants();
+    plantService.getAllPlants().then(response => {
+      if (response.success && response.data?.plants) {
+        setPlants(response.data.plants);
+      }
+      setLoading(false);
+    });
   }, []);
 
-  const loadPlants = async () => {
-    setLoading(true);
-    const response = await plantService.getAllPlants();
-    if (response.success && response.data?.plants) {
-      setPlants(response.data.plants);
-    }
-    setLoading(false);
-  };
-
-  const handleEditPlant = (plantId: string) => {
+  const handleEditPlant = (plantId) => {
     const plant = plants.find(p => p.id === plantId);
     if (plant) {
       setEditingPlant(plant);
@@ -68,7 +63,7 @@ export const MyPlants = () => {
       wateringSchedule: days,
     });
     if (response.success && response.data?.plant) {
-      setPlants(prev => prev.map(p => p.id === editingPlant.id ? response.data!.plant : p));
+      setPlants(prev => prev.map(p => p.id === editingPlant.id ? response.data.plant : p));
       setEditingPlant(null);
       setEditFormData({ name: '', species: '', wateringSchedule: '' });
       setActionError('');
@@ -101,7 +96,7 @@ export const MyPlants = () => {
       wateringSchedule: days,
     });
     if (response.success && response.data?.plant) {
-      setPlants(prev => [response.data!.plant, ...prev]);
+      setPlants(prev => [response.data.plant, ...prev]);
       setShowAddPlantModal(false);
       setNewPlantData({ name: '', species: '', wateringSchedule: '' });
       setActionError('');
@@ -110,7 +105,7 @@ export const MyPlants = () => {
     }
   };
 
-  const handleDeletePlant = async (plantId: string) => {
+  const handleDeletePlant = async (plantId) => {
     if (!window.confirm('Are you sure you want to delete this plant?')) return;
     const response = await plantService.deletePlant(plantId);
     if (response.success) {
@@ -118,11 +113,11 @@ export const MyPlants = () => {
     }
   };
 
-  const handleWaterPlant = async (plantId: string) => {
+  const handleWaterPlant = async (plantId) => {
     setWateredPlants(prev => new Set(prev).add(plantId));
     const response = await plantService.waterPlant(plantId);
     if (response.success && response.data?.plant) {
-      setPlants(prev => prev.map(p => p.id === plantId ? response.data!.plant : p));
+      setPlants(prev => prev.map(p => p.id === plantId ? response.data.plant : p));
     }
     setTimeout(() => {
       setWateredPlants(prev => {
@@ -247,12 +242,6 @@ const PlantCard = ({
   onEdit,
   onDelete,
   isWatered,
-}: {
-  plant: Plant;
-  onWater: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  isWatered: boolean;
 }) => {
   const timer = useRealtimeTimer(plant.lastWatered);
   const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
@@ -318,7 +307,7 @@ const PlantCard = ({
         <button className="action-btn secondary" onClick={() => onEdit(plant.id)}>
           <EditIcon fontSize="inherit" /> Edit
         </button>
-        <button className="action-btn danger" onClick={() => onDelete(plant.id)}>
+        <button className="action-btn danger" onClick={() => onDelete(plant.id)} title="Delete plant">
           <DeleteIcon fontSize="inherit" />
         </button>
       </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { AppSettings, UserInfo } from '../types';
 import settingsService from '../services/settingsService';
 import AppLayout from '../components/AppLayout';
 import MotionCard from '../components/MotionCard';
@@ -21,17 +20,17 @@ import toast from 'react-hot-toast';
 export const Settings = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   // User info state
-  const [userInfo, setUserInfo] = useState<UserInfo>({
+  const [userInfo, setUserInfo] = useState({
     username: '',
     email: '',
   });
 
   // Settings state
-  const [settings, setSettings] = useState<AppSettings>({
+  const [settings, setSettings] = useState({
     notificationsEnabled: true,
     emailAlerts: true,
     wateringReminders: true,
@@ -70,7 +69,7 @@ export const Settings = () => {
         } else {
           setError(settingsRes.error || 'Failed to load settings');
         }
-      } catch (err: any) {
+      } catch (err) {
         setError(err.message || 'An error occurred while loading settings');
       } finally {
         setLoading(false);
@@ -93,14 +92,14 @@ export const Settings = () => {
     }
   }, [settings.darkMode]);
 
-  const handleSettingChange = (key: keyof AppSettings, value: boolean | string) => {
+  const handleSettingChange = (key, value) => {
     setSettings((prev) => ({
       ...prev,
       [key]: value,
     }));
   };
 
-  const handleUserInfoChange = (key: keyof UserInfo, value: string) => {
+  const handleUserInfoChange = (key, value) => {
     setUserInfo((prev) => ({
       ...prev,
       [key]: value,
@@ -122,7 +121,7 @@ export const Settings = () => {
       } else {
         toast.error(`Failed to update account settings: ${res.error}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`Error: ${err.message || 'Failed to save account settings'}`);
     }
   };
@@ -137,7 +136,7 @@ export const Settings = () => {
       } else {
         toast.error(`Failed to save preferences: ${res.error}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`Error: ${err.message || 'Failed to save preferences'}`);
     }
   };
@@ -174,7 +173,7 @@ export const Settings = () => {
       } else {
         toast.error(`Failed to change password: ${res.error}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`Error: ${err.message || 'Failed to change password'}`);
     }
   };
@@ -196,7 +195,7 @@ export const Settings = () => {
         toast.error(`Failed to delete account: ${res.error}`);
         setDeleting(false);
       }
-    } catch (err: any) {
+    } catch (err) {
       toast.error(`Error: ${err.message || 'Failed to delete account'}`);
       setDeleting(false);
     }
@@ -294,7 +293,7 @@ export const Settings = () => {
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button className="btn primary" onClick={handleChangePassword}>
                       <CheckCircleIcon fontSize="inherit" /> Update Password
                     </button>
@@ -468,6 +467,7 @@ export const Settings = () => {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 12px;
           padding: 16px 0;
           border-bottom: 1px solid #e0e0e0;
         }
@@ -491,6 +491,7 @@ export const Settings = () => {
         .toggle-input {
           width: 48px;
           height: 24px;
+          flex-shrink: 0;
           cursor: pointer;
         }
 

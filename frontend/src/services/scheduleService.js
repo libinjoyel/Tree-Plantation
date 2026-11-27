@@ -1,10 +1,14 @@
 // Schedule Service — handles all schedule-related API calls
 
-import type { ApiResponse, ScheduleItem } from '../types';
 import apiConfig from '../utils/apiConfig';
 
+const normalizeSchedule = (raw) => ({
+  ...raw,
+  id: raw._id || raw.id,
+});
+
 class ScheduleService {
-  async getAllSchedules(): Promise<ApiResponse<{ schedules: ScheduleItem[] }>> {
+  async getAllSchedules() {
     try {
       const response = await apiConfig.get('/schedules');
       if (response.success && response.data?.schedules) {
@@ -16,7 +20,7 @@ class ScheduleService {
     }
   }
 
-  async getUpcomingSchedules(days = 7): Promise<ApiResponse<{ schedules: ScheduleItem[] }>> {
+  async getUpcomingSchedules(days = 7) {
     try {
       const response = await apiConfig.get(`/schedules/upcoming?days=${days}`);
       if (response.success && response.data?.schedules) {
@@ -28,14 +32,7 @@ class ScheduleService {
     }
   }
 
-  async createSchedule(data: {
-    plantId: string;
-    plantName: string;
-    task: string;
-    dueDate: string;
-    time?: string;
-    priority?: 'high' | 'medium' | 'low';
-  }): Promise<ApiResponse<{ schedule: ScheduleItem }>> {
+  async createSchedule(data) {
     try {
       const response = await apiConfig.post('/schedules', data);
       if (response.success && response.data?.schedule) {
@@ -47,10 +44,7 @@ class ScheduleService {
     }
   }
 
-  async updateSchedule(
-    id: string,
-    data: Partial<{ task: string; dueDate: string; time: string; priority: string; completed: boolean }>
-  ): Promise<ApiResponse<{ schedule: ScheduleItem }>> {
+  async updateSchedule(id, data) {
     try {
       const response = await apiConfig.put(`/schedules/${id}`, data);
       if (response.success && response.data?.schedule) {
@@ -62,7 +56,7 @@ class ScheduleService {
     }
   }
 
-  async deleteSchedule(id: string): Promise<ApiResponse<null>> {
+  async deleteSchedule(id) {
     try {
       return await apiConfig.delete(`/schedules/${id}`);
     } catch {
@@ -70,7 +64,7 @@ class ScheduleService {
     }
   }
 
-  async markTaskComplete(id: string): Promise<ApiResponse<{ schedule: ScheduleItem }>> {
+  async markTaskComplete(id) {
     try {
       const response = await apiConfig.post(`/schedules/${id}/complete`);
       if (response.success && response.data?.schedule) {
@@ -83,17 +77,12 @@ class ScheduleService {
   }
 
   // Toggle completion — uses markTaskComplete for true, updateSchedule for false
-  async toggleCompletion(id: string, completed: boolean): Promise<ApiResponse<{ schedule: ScheduleItem }>> {
+  async toggleCompletion(id, completed) {
     if (completed) {
       return this.markTaskComplete(id);
     }
     return this.updateSchedule(id, { completed: false });
   }
 }
-
-const normalizeSchedule = (raw: any): ScheduleItem => ({
-  ...raw,
-  id: raw._id || raw.id,
-});
 
 export default new ScheduleService();

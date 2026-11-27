@@ -5,19 +5,16 @@ import { formatTimeSince } from '../utils/helpers';
 /**
  * Custom hook for managing form state
  */
-export const useForm = <T extends Record<string, any>>(initialState: T) => {
+export const useForm = (initialState) => {
   const [values, setValues] = useState(initialState);
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const { name, value, type } = e.target;
-      setValues((prev) => ({
-        ...prev,
-        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-      }));
-    },
-    []
-  );
+  const handleChange = useCallback((e) => {
+    const { name, value, type } = e.target;
+    setValues((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? e.target.checked : value,
+    }));
+  }, []);
 
   const reset = useCallback(() => {
     setValues(initialState);
@@ -29,10 +26,10 @@ export const useForm = <T extends Record<string, any>>(initialState: T) => {
 /**
  * Custom hook for handling async operations
  */
-export const useAsync = <T,>(asyncFunction: () => Promise<T>, immediate = true) => {
-  const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-  const [value, setValue] = useState<T | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+export const useAsync = (asyncFunction, immediate = true) => {
+  const [status, setStatus] = useState('idle');
+  const [value, setValue] = useState(null);
+  const [error, setError] = useState(null);
 
   const execute = useCallback(async () => {
     setStatus('pending');
@@ -43,17 +40,24 @@ export const useAsync = <T,>(asyncFunction: () => Promise<T>, immediate = true) 
       setValue(response);
       setStatus('success');
       return response;
-    } catch (error) {
-      setError(error as Error);
+    } catch (err) {
+      setError(err);
       setStatus('error');
     }
   }, [asyncFunction]);
 
   // Call immediately if specified
   useEffect(() => {
-    if (immediate) {
-      execute();
-    }
+    if (!immediate) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        execute();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [execute, immediate]);
 
   return { execute, status, value, error };
@@ -63,7 +67,7 @@ export const useAsync = <T,>(asyncFunction: () => Promise<T>, immediate = true) 
  * Custom hook that returns a live-updating "time since" string
  * Re-renders every 30 seconds to keep the timer current
  */
-export const useRealtimeTimer = (lastWatered: Date | string): string => {
+export const useRealtimeTimer = (lastWatered) => {
   const [display, setDisplay] = useState('');
 
   useEffect(() => {

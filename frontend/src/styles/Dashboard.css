@@ -694,6 +694,18 @@
   background: #e8e8e8;
 }
 
+.action-btn.danger {
+  background: #fff0f0;
+  color: #cc0000;
+  border: 1px solid #ffcccc;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+
+.action-btn.danger:hover {
+  background: #ffe0e0;
+}
+
 /* MyPlants page plant info styling */
 .plant-info {
   display: flex;
@@ -755,6 +767,11 @@
   white-space: nowrap;
   background-color: #a3e4cb;
   color: #1a6d42;
+}
+
+.plant-status.warning {
+  background-color: #ffd699;
+  color: #cc8400;
 }
 
 h3 {
@@ -859,22 +876,39 @@ h3 {
 
 @media (max-width: 768px) {
   .sidebar {
-    width: 70px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    z-index: 200;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar.closed {
     position: fixed;
-    left: -70px;
+    left: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    pointer-events: none;
   }
 
-  .sidebar-header h2,
-  .nav-item .label,
-  .logout-sidebar-btn .label {
-    display: none;
+  .dashboard-main,
+  .sidebar.closed ~ .dashboard-main {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .toggle-sidebar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .navbar-content {
-    padding: 12px 20px;
+    padding: 12px 16px;
     gap: 10px;
   }
 
@@ -981,71 +1015,58 @@ h3 {
     font-size: 20px;
   }
 
-  .add-btn {
+  .add-btn,
+  .section-header .btn.primary {
     width: 100%;
+    justify-content: center;
   }
 
   .tips-grid {
     grid-template-columns: 1fr;
   }
+
+  .schedule-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .schedule-right {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .settings-card {
+    padding: 20px;
+  }
 }
 
 @media (max-width: 480px) {
   .dashboard-wrapper {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    padding: 12px;
-    order: 2;
-  }
-
-  .sidebar-header {
-    padding: 0;
-  }
-
-  .sidebar-header h2 {
-    font-size: 16px;
-  }
-
-  .sidebar-nav {
-    flex-direction: row;
-    padding: 0;
-    overflow-x: auto;
-  }
-
-  .nav-item {
-    padding: 8px 12px;
-    font-size: 12px;
-    margin: 0 4px;
-  }
-
-  .sidebar-footer {
-    padding: 0;
-    border: none;
-  }
-
-  .logout-sidebar-btn {
-    padding: 8px 12px;
-    font-size: 12px;
+    overflow-x: hidden;
   }
 
   .navbar-content {
-    flex-direction: column;
-    padding: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
     gap: 10px;
   }
 
-  .navbar-actions {
-    width: 100%;
-    justify-content: space-between;
+  .navbar-title h1 {
+    font-size: 18px;
   }
 
-  .toggle-sidebar {
-    display: none;
+  .navbar-actions {
+    width: auto;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-left: auto;
   }
 
   .dashboard-content {
@@ -1147,18 +1168,50 @@ h3 {
 
   .plants-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .plant-card {
-    padding: 14px;
+    padding: 18px;
   }
 
   .plant-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .plant-actions .action-btn {
+    min-width: 0;
   }
 
   .tip-card {
-    padding: 12px;
+    padding: 18px;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 16px;
+    gap: 10px;
+  }
+
+  .scenario-container,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-card {
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .settings-card {
+    padding: 18px;
+    gap: 16px;
   }
 }
 
@@ -3239,10 +3292,17 @@ body.dark-mode .plant-card.needs-water:hover {
 
   .weather-column {
     min-width: 0;
+    width: 100%;
+  }
+
+  .weather-compact {
+    min-width: 0;
+    width: 100%;
   }
 
   .stats-column {
     min-width: 0;
+    width: 100%;
   }
 
   .stats-compact {
@@ -3313,24 +3373,51 @@ body.dark-mode .plant-card.needs-water:hover {
 }
 
 @media (max-width: 480px) {
+  .dashboard-top-row {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
   .quick-actions {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
   }
 
   .quick-action-btn {
-    min-width: 100%;
-    flex-direction: row;
+    min-width: 0;
+    width: 100%;
+    flex-direction: column;
     justify-content: center;
-    padding: 12px 16px;
+    padding: 14px 10px;
+    gap: 8px;
   }
 
   .quick-action-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .quick-action-label {
+    font-size: 13px;
+    text-align: center;
   }
 
   .stats-compact {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .stat-card.enhanced {
+    padding: 14px 8px;
+  }
+
+  .stat-icon-box {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
   }
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { ScheduleItem, Plant } from '../types';
 import scheduleService from '../services/scheduleService';
 import plantService from '../services/plantService';
 import AppLayout from '../components/AppLayout';
@@ -22,7 +21,7 @@ import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import CloseIcon from '@mui/icons-material/Close';
 
-const formatDueDate = (dueDate: string): { text: string; isOverdue: boolean } => {
+const formatDueDate = (dueDate) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(dueDate + 'T00:00:00');
@@ -36,11 +35,11 @@ const formatDueDate = (dueDate: string): { text: string; isOverdue: boolean } =>
 };
 
 export const Schedule = () => {
-  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [scheduleItems, setScheduleItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [plants, setPlants] = useState<Plant[]>([]);
+  const [plants, setPlants] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<ScheduleItem | null>(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [actionError, setActionError] = useState('');
   const [formData, setFormData] = useState({
     plantId: '',
@@ -48,30 +47,25 @@ export const Schedule = () => {
     task: '',
     dueDate: '',
     time: '09:00 AM',
-    priority: 'medium' as 'high' | 'medium' | 'low',
+    priority: 'medium',
   });
 
   useEffect(() => {
-    Promise.all([loadSchedules(), loadPlants()]);
+    Promise.all([
+      scheduleService.getAllSchedules(),
+      plantService.getAllPlants(),
+    ]).then(([schedRes, plantRes]) => {
+      if (schedRes.success && schedRes.data?.schedules) {
+        setScheduleItems(schedRes.data.schedules);
+      }
+      if (plantRes.success && plantRes.data?.plants) {
+        setPlants(plantRes.data.plants);
+      }
+      setLoading(false);
+    });
   }, []);
 
-  const loadSchedules = async () => {
-    setLoading(true);
-    const response = await scheduleService.getAllSchedules();
-    if (response.success && response.data?.schedules) {
-      setScheduleItems(response.data.schedules);
-    }
-    setLoading(false);
-  };
-
-  const loadPlants = async () => {
-    const response = await plantService.getAllPlants();
-    if (response.success && response.data?.plants) {
-      setPlants(response.data.plants);
-    }
-  };
-
-  const toggleTaskCompletion = async (item: ScheduleItem) => {
+  const toggleTaskCompletion = async (item) => {
     const newCompleted = !item.completed;
     setScheduleItems(prev =>
       prev.map(s => s.id === item.id ? { ...s, completed: newCompleted } : s)
@@ -91,7 +85,7 @@ export const Schedule = () => {
     setShowModal(true);
   };
 
-  const openEditModal = (task: ScheduleItem) => {
+  const openEditModal = (task) => {
     setEditingTask(task);
     setFormData({
       plantId: task.plantId,
@@ -105,7 +99,7 @@ export const Schedule = () => {
     setShowModal(true);
   };
 
-  const handlePlantChange = (plantId: string) => {
+  const handlePlantChange = (plantId) => {
     const plant = plants.find(p => p.id === plantId);
     setFormData({
       ...formData,
@@ -129,7 +123,7 @@ export const Schedule = () => {
       });
       if (response.success && response.data?.schedule) {
         setScheduleItems(prev =>
-          prev.map(s => s.id === editingTask.id ? response.data!.schedule : s)
+          prev.map(s => s.id === editingTask.id ? response.data.schedule : s)
         );
         setShowModal(false);
       } else {
@@ -145,7 +139,7 @@ export const Schedule = () => {
         priority: formData.priority,
       });
       if (response.success && response.data?.schedule) {
-        setScheduleItems(prev => [...prev, response.data!.schedule]);
+        setScheduleItems(prev => [...prev, response.data.schedule]);
         setShowModal(false);
       } else {
         setActionError(response.error || 'Failed to create task');
@@ -153,7 +147,7 @@ export const Schedule = () => {
     }
   };
 
-  const handleDelete = async (taskId: string) => {
+  const handleDelete = async (taskId) => {
     if (!window.confirm('Delete this task?')) return;
     const response = await scheduleService.deleteSchedule(taskId);
     if (response.success) {
@@ -161,7 +155,7 @@ export const Schedule = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return '#ff6b6b';
       case 'medium': return '#ffa500';
@@ -174,7 +168,7 @@ export const Schedule = () => {
   const completedTasks = scheduleItems.filter(item => item.completed);
   const highPriorityCount = upcomingTasks.filter(t => t.priority === 'high').length;
 
-  const renderTaskRow = (task: ScheduleItem) => {
+  const renderTaskRow = (task) => {
     const dueInfo = formatDueDate(task.dueDate);
     return (
       <motion.div
@@ -383,7 +377,7 @@ export const Schedule = () => {
                     <select
                       id="task-priority"
                       value={formData.priority}
-                      onChange={e => setFormData({ ...formData, priority: e.target.value as 'high' | 'medium' | 'low' })}
+                      onChange={e => setFormData({ ...formData, priority: e.target.value })}
                       className="form-input"
                       style={{ cursor: 'pointer' }}
                     >

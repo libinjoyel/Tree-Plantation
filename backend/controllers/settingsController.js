@@ -5,21 +5,10 @@ const logger = require('../utils/logger');
 const settingsController = {
   getSettings: async (req, res) => {
     try {
-      let settings = await Settings.findOne({ userId: req.userId });
+      let settings = await Settings.findByUser(req.userId);
 
       if (!settings) {
-        // Create default settings if not exists
-        settings = new Settings({
-          userId: req.userId,
-          notificationsEnabled: true,
-          emailAlerts: true,
-          wateringReminders: true,
-          weeklyReports: false,
-          darkMode: false,
-          language: 'English',
-          timezone: 'UTC'
-        });
-        await settings.save();
+        settings = await Settings.createDefault(req.userId);
       }
 
       res.json({
@@ -47,20 +36,15 @@ const settingsController = {
         timezone
       } = req.body;
 
-      const settings = await Settings.findOneAndUpdate(
-        { userId: req.userId },
-        {
-          ...(notificationsEnabled !== undefined && { notificationsEnabled }),
-          ...(emailAlerts !== undefined && { emailAlerts }),
-          ...(wateringReminders !== undefined && { wateringReminders }),
-          ...(weeklyReports !== undefined && { weeklyReports }),
-          ...(darkMode !== undefined && { darkMode }),
-          ...(language && { language }),
-          ...(timezone && { timezone }),
-          updatedAt: new Date()
-        },
-        { new: true, upsert: true }
-      );
+      const settings = await Settings.upsertByUser(req.userId, {
+        notificationsEnabled,
+        emailAlerts,
+        wateringReminders,
+        weeklyReports,
+        darkMode,
+        language,
+        timezone
+      });
 
       logger.info(`Settings updated for user: ${req.userId}`);
 
@@ -79,7 +63,7 @@ const settingsController = {
 
   getNotificationPreferences: async (req, res) => {
     try {
-      const settings = await Settings.findOne({ userId: req.userId });
+      const settings = await Settings.findByUser(req.userId);
 
       if (!settings) {
         return res.status(404).json({
@@ -117,17 +101,12 @@ const settingsController = {
         weeklyReports
       } = req.body;
 
-      const settings = await Settings.findOneAndUpdate(
-        { userId: req.userId },
-        {
-          ...(notificationsEnabled !== undefined && { notificationsEnabled }),
-          ...(emailAlerts !== undefined && { emailAlerts }),
-          ...(wateringReminders !== undefined && { wateringReminders }),
-          ...(weeklyReports !== undefined && { weeklyReports }),
-          updatedAt: new Date()
-        },
-        { new: true }
-      );
+      const settings = await Settings.updateNotificationsByUser(req.userId, {
+        notificationsEnabled,
+        emailAlerts,
+        wateringReminders,
+        weeklyReports
+      });
 
       if (!settings) {
         return res.status(404).json({
@@ -163,7 +142,7 @@ const settingsController = {
       }
 
       // Get user with password
-      const user = await User.findById(req.userId).select('+password');
+      const user = await User.findById(req.userId, { includePassword: true });
 
       if (!user) {
         return res.status(404).json({
@@ -173,7 +152,7 @@ const settingsController = {
       }
 
       // Verify current password
-      const isPasswordValid = await user.comparePassword(currentPassword);
+      const isPasswordValid = await User.comparePassword(currentPassword, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
@@ -182,8 +161,7 @@ const settingsController = {
       }
 
       // Update password
-      user.password = newPassword;
-      await user.save();
+      await User.updatePasswordAndClearReset(req.userId, newPassword);
 
       logger.info(`Password changed for user: ${req.userId}`);
 
@@ -233,14 +211,7 @@ const settingsController = {
     try {
       const { name } = req.body;
 
-      const user = await User.findByIdAndUpdate(
-        req.userId,
-        {
-          ...(name && { name }),
-          updatedAt: new Date()
-        },
-        { new: true }
-      );
+      const user = await User.updateName(req.userId, name);
 
       if (!user) {
         return res.status(404).json({
@@ -280,7 +251,7 @@ const settingsController = {
         });
       }
 
-      if (user.deletedAt) {
+      if (user.deleted_at) {
         return res.status(400).json({
           success: false,
           error: 'Account is already deleted'
@@ -288,7 +259,7 @@ const settingsController = {
       }
 
       // Soft delete — mark user as deleted but keep all data
-      await User.findByIdAndUpdate(req.userId, { deletedAt: new Date() });
+      await User.softDelete(req.userId);
 
       logger.info(`Account soft-deleted for user: ${req.userId}`);
 

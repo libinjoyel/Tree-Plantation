@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
+const User = require('../models/User');
 const logger = require('../utils/logger');
 
 const authMiddleware = {
-  authenticate: (req, res, next) => {
+  authenticate: async (req, res, next) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
 
@@ -15,7 +16,16 @@ const authMiddleware = {
       }
 
       const decoded = jwt.verify(token, jwtConfig.secret);
-      req.userId = decoded.userId;
+      const user = await User.findById(decoded.userId);
+
+      if (!user || user.deleted_at) {
+        return res.status(401).json({
+          success: false,
+          error: 'Account no longer exists or has been deactivated'
+        });
+      }
+
+      req.userId = user.id;
       req.user = decoded;
       next();
     } catch (error) {

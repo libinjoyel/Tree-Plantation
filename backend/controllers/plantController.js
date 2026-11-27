@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 const plantController = {
   getAllPlants: async (req, res) => {
     try {
-      const plants = await Plant.find({ userId: req.userId }).sort({ createdAt: -1 });
+      const plants = await Plant.findAllByUser(req.userId);
       res.json({
         success: true,
         data: { plants }
@@ -20,10 +20,7 @@ const plantController = {
 
   getPlantById: async (req, res) => {
     try {
-      const plant = await Plant.findOne({
-        _id: req.params.id,
-        userId: req.userId
-      });
+      const plant = await Plant.findByIdAndUser(req.params.id, req.userId);
 
       if (!plant) {
         return res.status(404).json({
@@ -49,15 +46,13 @@ const plantController = {
     try {
       const { name, species, wateringSchedule } = req.body;
 
-      const plant = new Plant({
+      const plant = await Plant.create({
         userId: req.userId,
         name,
         species,
-        wateringSchedule,
-        lastWatered: new Date()
+        wateringSchedule
       });
 
-      await plant.save();
       logger.info(`Plant created: ${name}`);
 
       res.status(201).json({
@@ -77,17 +72,19 @@ const plantController = {
     try {
       const { name, species, wateringSchedule, health } = req.body;
 
-      const plant = await Plant.findOneAndUpdate(
-        { _id: req.params.id, userId: req.userId },
-        {
-          ...(name && { name }),
-          ...(species && { species }),
-          ...(wateringSchedule && { wateringSchedule }),
-          ...(health !== undefined && { health }),
-          updatedAt: new Date()
-        },
-        { new: true }
-      );
+      if (wateringSchedule !== undefined && Number(wateringSchedule) < 1) {
+        return res.status(400).json({
+          success: false,
+          error: 'Watering schedule must be at least 1 day'
+        });
+      }
+
+      const plant = await Plant.updateByIdAndUser(req.params.id, req.userId, {
+        name,
+        species,
+        wateringSchedule,
+        health
+      });
 
       if (!plant) {
         return res.status(404).json({
@@ -113,10 +110,7 @@ const plantController = {
 
   deletePlant: async (req, res) => {
     try {
-      const plant = await Plant.findOneAndDelete({
-        _id: req.params.id,
-        userId: req.userId
-      });
+      const plant = await Plant.deleteByIdAndUser(req.params.id, req.userId);
 
       if (!plant) {
         return res.status(404).json({
@@ -142,11 +136,7 @@ const plantController = {
 
   waterPlant: async (req, res) => {
     try {
-      const plant = await Plant.findOneAndUpdate(
-        { _id: req.params.id, userId: req.userId },
-        { lastWatered: new Date() },
-        { new: true }
-      );
+      const plant = await Plant.waterByIdAndUser(req.params.id, req.userId);
 
       if (!plant) {
         return res.status(404).json({
@@ -181,13 +171,7 @@ const plantController = {
         });
       }
 
-      const plants = await Plant.find({
-        userId: req.userId,
-        $or: [
-          { name: { $regex: q, $options: 'i' } },
-          { species: { $regex: q, $options: 'i' } }
-        ]
-      });
+      const plants = await Plant.searchByUser(req.userId, q);
 
       res.json({
         success: true,

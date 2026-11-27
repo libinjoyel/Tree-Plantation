@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { Plant, ScheduleItem } from '../types';
 import plantService from '../services/plantService';
 import scheduleService from '../services/scheduleService';
 import { calculateHealth, formatTimeSince } from '../utils/helpers';
@@ -30,10 +29,10 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import StarIcon from '@mui/icons-material/Star';
 
 export const Analytics = () => {
-  const [plants, setPlants] = useState<Plant[]>([]);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [plants, setPlants] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,7 +54,7 @@ export const Analytics = () => {
         } else {
           setError(schedulesResponse.error || 'Failed to fetch schedules');
         }
-      } catch (err: any) {
+      } catch (err) {
         setError(err.message || 'An error occurred while loading analytics data');
       } finally {
         setLoading(false);
@@ -65,7 +64,7 @@ export const Analytics = () => {
     fetchData();
   }, []);
 
-  const getHealthColor = (health: number) => {
+  const getHealthColor = (health) => {
     if (health >= 90) return '#2d8659';
     if (health >= 75) return '#ffa500';
     return '#ff6b6b';
@@ -83,7 +82,7 @@ export const Analytics = () => {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
-  const getPlantHealth = (p: Plant) => calculateHealth(p.lastWatered, p.wateringSchedule);
+  const getPlantHealth = (p) => calculateHealth(p.lastWatered, p.wateringSchedule);
 
   const avgHealth = totalPlants
     ? Math.round(plants.reduce((sum, p) => sum + getPlantHealth(p), 0) / totalPlants)
@@ -141,7 +140,7 @@ export const Analytics = () => {
   ].filter(d => d.value > 0);
 
   // Dynamic Recommendations
-  const recommendations: { icon: React.ReactNode; title: string; description: string }[] = [];
+  const recommendations = [];
 
   // 1. Identify unhealthy plants
   const unhealthyPlants = plants.filter(p => getPlantHealth(p) < 85);
@@ -295,7 +294,7 @@ export const Analytics = () => {
                   ) : (
                     <ResponsiveContainer width="100%" height={260}>
                       <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={{ stroke: '#ccc', strokeWidth: 1 }}>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={{ stroke: '#ccc', strokeWidth: 1 }}>
                           {pieData.map((entry, idx) => (
                             <Cell key={idx} fill={entry.color} />
                           ))}

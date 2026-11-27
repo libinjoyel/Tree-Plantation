@@ -20,7 +20,7 @@ router.get('/:id', scheduleController.getScheduleById);
 router.post('/', validationMiddleware.validateSchedule, scheduleController.createSchedule);
 
 // PUT /api/schedules/:id
-router.put('/:id', scheduleController.updateSchedule);
+router.put('/:id', validationMiddleware.validateScheduleUpdate, scheduleController.updateSchedule);
 
 // DELETE /api/schedules/:id
 router.delete('/:id', scheduleController.deleteSchedule);

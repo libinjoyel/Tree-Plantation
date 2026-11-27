@@ -1,11 +1,11 @@
 const Schedule = require('../models/Schedule');
+const Plant = require('../models/Plant');
 const logger = require('../utils/logger');
 
 const scheduleController = {
   getAllSchedules: async (req, res) => {
     try {
-      const schedules = await Schedule.find({ userId: req.userId })
-        .sort({ dueDate: 1, priority: -1 });
+      const schedules = await Schedule.findAllByUser(req.userId);
 
       res.json({
         success: true,
@@ -22,10 +22,7 @@ const scheduleController = {
 
   getScheduleById: async (req, res) => {
     try {
-      const schedule = await Schedule.findOne({
-        _id: req.params.id,
-        userId: req.userId
-      });
+      const schedule = await Schedule.findByIdAndUser(req.params.id, req.userId);
 
       if (!schedule) {
         return res.status(404).json({
@@ -51,18 +48,24 @@ const scheduleController = {
     try {
       const { plantId, plantName, task, dueDate, time, priority } = req.body;
 
-      const schedule = new Schedule({
+      const plant = await Plant.findByIdAndUser(plantId, req.userId);
+      if (!plant) {
+        return res.status(404).json({
+          success: false,
+          error: 'Plant not found'
+        });
+      }
+
+      const schedule = await Schedule.create({
         userId: req.userId,
         plantId,
-        plantName,
+        plantName: plantName || plant.name,
         task,
         dueDate,
         time: time || '09:00 AM',
-        priority: priority || 'medium',
-        completed: false
+        priority: priority || 'medium'
       });
 
-      await schedule.save();
       logger.info(`Schedule created: ${task}`);
 
       res.status(201).json({
@@ -82,18 +85,13 @@ const scheduleController = {
     try {
       const { task, dueDate, time, priority, completed } = req.body;
 
-      const schedule = await Schedule.findOneAndUpdate(
-        { _id: req.params.id, userId: req.userId },
-        {
-          ...(task && { task }),
-          ...(dueDate && { dueDate }),
-          ...(time && { time }),
-          ...(priority && { priority }),
-          ...(completed !== undefined && { completed }),
-          updatedAt: new Date()
-        },
-        { new: true }
-      );
+      const schedule = await Schedule.updateByIdAndUser(req.params.id, req.userId, {
+        task,
+        dueDate,
+        time,
+        priority,
+        completed
+      });
 
       if (!schedule) {
         return res.status(404).json({
@@ -119,10 +117,7 @@ const scheduleController = {
 
   deleteSchedule: async (req, res) => {
     try {
-      const schedule = await Schedule.findOneAndDelete({
-        _id: req.params.id,
-        userId: req.userId
-      });
+      const schedule = await Schedule.deleteByIdAndUser(req.params.id, req.userId);
 
       if (!schedule) {
         return res.status(404).json({
@@ -148,11 +143,7 @@ const scheduleController = {
 
   markTaskComplete: async (req, res) => {
     try {
-      const schedule = await Schedule.findOneAndUpdate(
-        { _id: req.params.id, userId: req.userId },
-        { completed: true, updatedAt: new Date() },
-        { new: true }
-      );
+      const schedule = await Schedule.markCompleteByIdAndUser(req.params.id, req.userId);
 
       if (!schedule) {
         return res.status(404).json({
@@ -180,17 +171,13 @@ const scheduleController = {
     try {
       const days = parseInt(req.query.days) || 7;
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Calculate future date
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + days);
       const futureDateStr = futureDate.toISOString().split('T')[0];
 
-      const schedules = await Schedule.find({
-        userId: req.userId,
-        dueDate: { $gte: today, $lte: futureDateStr },
-        completed: false
-      }).sort({ dueDate: 1, priority: -1 });
+      const schedules = await Schedule.findUpcomingByUser(req.userId, today, futureDateStr);
 
       res.json({
         success: true,

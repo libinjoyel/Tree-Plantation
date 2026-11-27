@@ -1,11 +1,8 @@
-import type { WeatherData, GeoLocation, OpenWeatherResponse, WeatherSuggestion } from '../types';
-
-// OpenWeather API Key from environment variables
-const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo_key';
+import apiConfig from '../utils/apiConfig';
 
 // Helper to convert weather icon codes to MUI icon names
-export const getWeatherIcon = (iconCode: string): string => {
-  const iconMap: Record<string, string> = {
+export const getWeatherIcon = (iconCode) => {
+  const iconMap = {
     '01d': 'WbSunny',
     '01n': 'NightsStay',
     '02d': 'WbPartlyCloudy',
@@ -29,7 +26,7 @@ export const getWeatherIcon = (iconCode: string): string => {
 };
 
 // Get plant care suggestion based on weather
-export const getPlantCareSuggestion = (weather: WeatherData): WeatherSuggestion => {
+export const getPlantCareSuggestion = (weather) => {
   const temp = weather.temperature;
   const condition = weather.condition.toLowerCase();
   const humidity = weather.humidity;
@@ -81,18 +78,18 @@ export const getPlantCareSuggestion = (weather: WeatherData): WeatherSuggestion 
   };
 };
 
-// Fetch weather data from OpenWeather API
-export const fetchWeatherData = async (longitude: number, latitude: number): Promise<WeatherData> => {
+// Fetch weather data via backend OpenWeather proxy
+export const fetchWeatherData = async (longitude, latitude) => {
   try {
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
+    const response = await apiConfig.get(
+      `/weather?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`
     );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch weather data');
+    if (!response.success || !response.data?.weather) {
+      throw new Error(response.error || 'Failed to fetch weather data');
     }
 
-    const data: OpenWeatherResponse = await response.json();
+    const data = response.data.weather;
 
     return {
       city: data.name,
@@ -112,7 +109,7 @@ export const fetchWeatherData = async (longitude: number, latitude: number): Pro
 };
 
 // Get user's current location
-export const getCurrentLocation = (): Promise<GeoLocation> => {
+export const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by this browser.'));
@@ -142,7 +139,7 @@ export const getCurrentLocation = (): Promise<GeoLocation> => {
 };
 
 // Complete flow: Get location and fetch weather
-export const getWeatherForCurrentLocation = async (): Promise<WeatherData> => {
+export const getWeatherForCurrentLocation = async () => {
   const location = await getCurrentLocation();
   return fetchWeatherData(location.longitude, location.latitude);
 };

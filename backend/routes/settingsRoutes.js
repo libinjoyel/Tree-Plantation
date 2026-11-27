@@ -20,7 +20,7 @@ router.get('/notifications', settingsController.getNotificationPreferences);
 router.put('/notifications', settingsController.updateNotificationPreferences);
 
 // POST /api/settings/change-password
-router.post('/change-password', settingsController.changePassword);
+router.post('/change-password', validationMiddleware.validateChangePassword, settingsController.changePassword);
 
 // GET /api/settings/user-info
 router.get('/user-info', settingsController.getUserInfo);

@@ -1,23 +1,21 @@
-import type { Variants, Transition } from 'framer-motion';
+export const easeOut = [0.4, 0, 0.2, 1];
 
-export const easeOut = [0.4, 0, 0.2, 1] as const;
-
-export const fastTransition: Transition = {
+export const fastTransition = {
   duration: 0.2,
   ease: easeOut,
 };
 
-export const cardTransition: Transition = {
+export const cardTransition = {
   duration: 0.35,
   ease: easeOut,
 };
 
-export const slowTransition: Transition = {
+export const slowTransition = {
   duration: 0.5,
   ease: easeOut,
 };
 
-export const staggerContainer: Variants = {
+export const staggerContainer = {
   initial: {},
   animate: {
     transition: {
@@ -27,7 +25,7 @@ export const staggerContainer: Variants = {
   },
 };
 
-export const fadeInUp: Variants = {
+export const fadeInUp = {
   initial: { opacity: 0, y: 16 },
   animate: {
     opacity: 1,
@@ -36,7 +34,7 @@ export const fadeInUp: Variants = {
   },
 };
 
-export const fadeInLeft: Variants = {
+export const fadeInLeft = {
   initial: { opacity: 0, x: -12 },
   animate: {
     opacity: 1,
@@ -45,7 +43,7 @@ export const fadeInLeft: Variants = {
   },
 };
 
-export const pageTransition: Variants = {
+export const pageTransition = {
   initial: { opacity: 0, y: 10 },
   animate: {
     opacity: 1,
@@ -73,7 +71,7 @@ export const cardHoverLight = {
   },
 };
 
-export const navItem: Variants = {
+export const navItem = {
   initial: { opacity: 0, x: -8 },
   animate: {
     opacity: 1,
@@ -90,7 +88,7 @@ export const scaleOnHover = {
   },
 };
 
-export const staggerFast: Variants = {
+export const staggerFast = {
   initial: {},
   animate: {
     transition: {

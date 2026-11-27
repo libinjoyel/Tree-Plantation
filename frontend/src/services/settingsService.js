@@ -1,10 +1,9 @@
 // Settings Service — handles settings, user-info, and password API calls
 
-import type { ApiResponse, AppSettings, UserInfo } from '../types';
 import apiConfig from '../utils/apiConfig';
 
 class SettingsService {
-  async getSettings(): Promise<ApiResponse<{ settings: AppSettings }>> {
+  async getSettings() {
     try {
       return await apiConfig.get('/settings');
     } catch {
@@ -12,7 +11,7 @@ class SettingsService {
     }
   }
 
-  async updateSettings(data: Partial<AppSettings>): Promise<ApiResponse<{ settings: AppSettings }>> {
+  async updateSettings(data) {
     try {
       return await apiConfig.put('/settings', data);
     } catch {
@@ -20,7 +19,7 @@ class SettingsService {
     }
   }
 
-  async getUserInfo(): Promise<ApiResponse<{ userInfo: UserInfo }>> {
+  async getUserInfo() {
     try {
       return await apiConfig.get('/settings/user-info');
     } catch {
@@ -28,7 +27,7 @@ class SettingsService {
     }
   }
 
-  async updateUserInfo(data: { name: string }): Promise<ApiResponse<{ userInfo: UserInfo }>> {
+  async updateUserInfo(data) {
     try {
       return await apiConfig.put('/settings/user-info', data);
     } catch {
@@ -36,7 +35,7 @@ class SettingsService {
     }
   }
 
-  async deleteAccount(): Promise<ApiResponse<null>> {
+  async deleteAccount() {
     try {
       return await apiConfig.delete('/settings/account');
     } catch {
@@ -44,10 +43,7 @@ class SettingsService {
     }
   }
 
-  async changePassword(data: {
-    currentPassword: string;
-    newPassword: string;
-  }): Promise<ApiResponse<null>> {
+  async changePassword(data) {
     try {
       return await apiConfig.post('/settings/change-password', data);
     } catch {

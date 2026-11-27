@@ -1,28 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { RegisterCredentials } from '../types';
 import authService from '../services/authService';
 import '../styles/Auth.css';
 
 export const Register = () => {
-  const [credentials, setCredentials] = useState<RegisterCredentials>({
+  const [credentials, setCredentials] = useState({
     email: '',
     password: '',
     name: '',
     confirmPassword: '',
   });
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     setCredentials({
       ...credentials,
       [e.target.name]: e.target.value,
     });
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = () => {
     if (!credentials.email || !credentials.password || !credentials.name || !credentials.confirmPassword) {
       setError('All fields are required');
       return false;
@@ -46,7 +45,7 @@ export const Register = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 

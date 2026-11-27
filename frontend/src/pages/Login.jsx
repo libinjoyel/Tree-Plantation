@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { LoginCredentials } from '../types';
 import authService from '../services/authService';
 import Typography from '@mui/material/Typography';
 import '../styles/Auth.css';
@@ -9,19 +8,19 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 export const Login = () => {
-  const [credentials, setCredentials] = useState<LoginCredentials>({
+  const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
 
-  const validateForm = (): boolean => {
-    const errors: { [key: string]: string } = {};
+  const validateForm = () => {
+    const errors = {};
 
     if (!credentials.email) {
       errors.email = 'Email is required';
@@ -39,7 +38,7 @@ export const Login = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials({
       ...credentials,
@@ -56,7 +55,7 @@ export const Login = () => {
 
   const [restoring, setRestoring] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 

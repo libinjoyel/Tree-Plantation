@@ -20,7 +20,7 @@ router.get('/:id', plantController.getPlantById);
 router.post('/', validationMiddleware.validatePlant, plantController.createPlant);
 
 // PUT /api/plants/:id
-router.put('/:id', plantController.updatePlant);
+router.put('/:id', validationMiddleware.validatePlantUpdate, plantController.updatePlant);
 
 // DELETE /api/plants/:id
 router.delete('/:id', plantController.deletePlant);

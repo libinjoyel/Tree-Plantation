@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import type { Plant, WeatherData, WeatherSuggestion } from '../types';
 import { getWeatherForCurrentLocation, getPlantCareSuggestion } from '../services/weatherService';
 import plantService from '../services/plantService';
 import { calculateHealth, getNextWatering, formatTimeSince } from '../utils/helpers';
@@ -41,14 +40,7 @@ import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
-interface ActivityItem {
-  id: string;
-  type: 'watered' | 'added';
-  message: string;
-  timestamp: Date;
-}
-
-const weatherIconMap: Record<string, React.ReactNode> = {
+const weatherIconMap = {
   WbSunny: <WbSunnyIcon fontSize="inherit" />,
   NightsStay: <NightsStayIcon fontSize="inherit" />,
   WbPartlyCloudy: <CloudIcon fontSize="inherit" />,
@@ -60,13 +52,13 @@ const weatherIconMap: Record<string, React.ReactNode> = {
   DeviceThermostat: <DeviceThermostatIcon fontSize="inherit" />,
 };
 
-const renderWeatherIcon = (iconName: string): React.ReactNode => {
+const renderWeatherIcon = (iconName) => {
   const icon = weatherIconMap[iconName];
   if (icon) return icon;
   return <DeviceThermostatIcon fontSize="inherit" />;
 };
 
-const suggestionIconMap: Record<string, React.ReactNode> = {
+const suggestionIconMap = {
   Water: <WaterDropIcon fontSize="inherit" />,
   Cloud: <CloudIcon fontSize="inherit" />,
   Hot: <WhatshotIcon fontSize="inherit" />,
@@ -75,7 +67,7 @@ const suggestionIconMap: Record<string, React.ReactNode> = {
   CheckCircle: <CheckCircleIcon fontSize="inherit" />,
 };
 
-const renderSuggestionIcon = (iconName: string): React.ReactNode => {
+const renderSuggestionIcon = (iconName) => {
   const icon = suggestionIconMap[iconName];
   if (icon) return icon;
   return <WbSunnyIcon fontSize="inherit" />;
@@ -83,30 +75,30 @@ const renderSuggestionIcon = (iconName: string): React.ReactNode => {
 
 export const Dashboard = () => {
   // Plant states — properly using setter
-  const [plants, setPlants] = useState<Plant[]>([]);
+  const [plants, setPlants] = useState([]);
   const [plantsLoading, setPlantsLoading] = useState(true);
 
   // Weather states
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [weatherError, setWeatherError] = useState<string>('');
-  const [weatherSuggestion, setWeatherSuggestion] = useState<WeatherSuggestion | null>(null);
+  const [weatherError, setWeatherError] = useState('');
+  const [weatherSuggestion, setWeatherSuggestion] = useState(null);
 
   // UI states
   const [showSearch, setShowSearch] = useState(false);
   const [showAddPlantModal, setShowAddPlantModal] = useState(false);
-  const [wateredPlants, setWateredPlants] = useState<Set<string>>(new Set());
-  const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
+  const [wateredPlants, setWateredPlants] = useState(new Set());
+  const [editingPlant, setEditingPlant] = useState(null);
   const [editFormData, setEditFormData] = useState({ name: '', species: '', wateringSchedule: '' });
   const [newPlantData, setNewPlantData] = useState({ name: '', species: '', wateringSchedule: '' });
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Plant[]>([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [actionError, setActionError] = useState('');
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activities, setActivities] = useState([]);
 
   const navigate = useNavigate();
 
-  const addActivity = (type: ActivityItem['type'], message: string) => {
+  const addActivity = (type, message) => {
     setActivities(prev => [
       { id: crypto.randomUUID(), type, message, timestamp: new Date() },
       ...prev,
@@ -124,7 +116,7 @@ export const Dashboard = () => {
   }, []);
 
   // Default weather data shown before user fetches real data
-  const defaultWeather: WeatherData = {
+  const defaultWeather = {
     city: 'Unknown Location',
     temperature: 24,
     humidity: 65,
@@ -158,7 +150,7 @@ export const Dashboard = () => {
       wateringSchedule: days,
     });
     if (response.success && response.data?.plant) {
-      setPlants(prev => [response.data!.plant, ...prev]);
+      setPlants(prev => [response.data.plant, ...prev]);
       setShowAddPlantModal(false);
       setNewPlantData({ name: '', species: '', wateringSchedule: '' });
       setActionError('');
@@ -168,11 +160,11 @@ export const Dashboard = () => {
     }
   };
 
-  const handleWaterPlant = async (plantId: string, plantName: string) => {
+  const handleWaterPlant = async (plantId, plantName) => {
     setWateredPlants(prev => new Set(prev).add(plantId));
     const response = await plantService.waterPlant(plantId);
     if (response.success && response.data?.plant) {
-      setPlants(prev => prev.map(p => p.id === plantId ? response.data!.plant : p));
+      setPlants(prev => prev.map(p => p.id === plantId ? response.data.plant : p));
       addActivity('watered', `Watered "${plantName}"`);
     }
     setTimeout(() => {
@@ -196,7 +188,7 @@ export const Dashboard = () => {
       if (r.success && r.data?.plant) {
         const idx = plants.findIndex(p => p.id === needsWater[i].id);
         if (idx !== -1) {
-          setPlants(prev => prev.map(p => p.id === needsWater[i].id ? r.data!.plant : p));
+          setPlants(prev => prev.map(p => p.id === needsWater[i].id ? r.data.plant : p));
           addActivity('watered', `Watered "${needsWater[i].name}"`);
         }
       }
@@ -204,7 +196,7 @@ export const Dashboard = () => {
     toast.success(`Watered ${needsWater.length} plant${needsWater.length !== 1 ? 's' : ''}!`);
   };
 
-  const handleEditPlant = (plantId: string) => {
+  const handleEditPlant = (plantId) => {
     const plant = plants.find(p => p.id === plantId);
     if (plant) {
       setEditingPlant(plant);
@@ -230,7 +222,7 @@ export const Dashboard = () => {
       wateringSchedule: days,
     });
     if (response.success && response.data?.plant) {
-      setPlants(prev => prev.map(p => p.id === editingPlant.id ? response.data!.plant : p));
+      setPlants(prev => prev.map(p => p.id === editingPlant.id ? response.data.plant : p));
       setEditingPlant(null);
       setEditFormData({ name: '', species: '', wateringSchedule: '' });
       setActionError('');
@@ -245,7 +237,7 @@ export const Dashboard = () => {
     setActionError('');
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = (query) => {
     setSearchQuery(query);
     if (query.trim() === '') {
       setSearchResults([]);
@@ -602,11 +594,6 @@ const DashboardPlantCard = ({
   onWater,
   onEdit,
   isWatered,
-}: {
-  plant: Plant;
-  onWater: (id: string, name: string) => void;
-  onEdit: (id: string) => void;
-  isWatered: boolean;
 }) => {
   const timer = useRealtimeTimer(plant.lastWatered);
   const health = calculateHealth(plant.lastWatered, plant.wateringSchedule);
